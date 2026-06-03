@@ -1077,7 +1077,6 @@
   <button onclick="document.getElementById('photo-lightbox').style.display='none'" style="position:absolute; top:16px; right:16px; background:rgba(0,0,0,0.5); border:none; color:#fff; font-size:1.5rem; width:40px; height:40px; border-radius:50%; cursor:pointer; line-height:1;">✕</button>
 </div>
 
-<button class="fab" id="fab" onclick="showPage('log', {currentTarget: document.querySelector('.nav-tab')})">🎣 Log a Catch</button>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1168,6 +1167,7 @@ async function initApp(session) {
   try { await loadCatches(); } catch (e) { console.error(e); }
   document.getElementById('loading').style.display = 'none';
   document.getElementById('app').style.display = 'block';
+  document.getElementById('fab').style.display = 'flex';
   document.getElementById('f-datetime').value = '';
   renderStats();
   renderCatches();
@@ -1201,6 +1201,7 @@ sb.auth.onAuthStateChange(async (event, session) => {
     document.getElementById('app').style.display = 'none';
     document.getElementById('loading').style.display = 'none';
     document.getElementById('auth-screen').style.display = 'flex';
+    document.getElementById('fab').style.display = 'none';
   } else if (event === 'TOKEN_REFRESHED' && session?.user) {
     currentUser = session.user;
   }
@@ -2672,5 +2673,6 @@ function showToast(msg, error = false) {
   setTimeout(() => t.classList.remove('show'), 2500);
 }
 </script>
+<button id="fab" onclick="showPage('log', {currentTarget: document.querySelector('.nav-tab')})" style="position:fixed; bottom:28px; right:24px; z-index:9998; padding:13px 24px; border-radius:50px; background:#3b9eff; color:#fff; border:none; font-size:0.9rem; font-weight:700; cursor:pointer; box-shadow:0 4px 18px rgba(59,158,255,0.55); white-space:nowrap; display:none;">🎣 Log a Catch</button>
 </body>
 </html>
