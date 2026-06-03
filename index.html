@@ -558,6 +558,7 @@
       <button class="nav-tab" onclick="showPage('board', event)">Bragging Board</button>
     </nav>
     <div class="header-right">
+      <button id="migrate-btn" onclick="migratePhotosToStorage()" style="padding:6px 12px; background:var(--accent2); border:none; border-radius:8px; color:#fff; font-size:0.75rem; font-weight:600; cursor:pointer; white-space:nowrap;">📦 Migrate Photos</button>
       <div class="user-badge" id="user-badge"></div>
       <button class="btn-logout" onclick="logout()">Sign Out</button>
     </div>
@@ -2597,6 +2598,72 @@ async function deleteComment(commentId) {
 }
 
 // ── TOAST ─────────────────────────────────────────────────────────────────────
+
+// ── PHOTO MIGRATION ───────────────────────────────────────────────────────────
+async function migratePhotosToStorage() {
+  const btn = document.getElementById('migrate-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Migrating...'; }
+
+  const { data, error } = await sb.from('catches').select('id, data')
+    .eq('user_id', currentUser.id);
+  
+  if (error) { showToast('Migration error: ' + error.message, true); return; }
+  
+  const toMigrate = (data || []).filter(row => 
+    row.data?.photo && row.data.photo.startsWith('data:image')
+  );
+
+  if (!toMigrate.length) {
+    showToast('No photos to migrate!');
+    if (btn) btn.style.display = 'none';
+    return;
+  }
+
+  let success = 0, failed = 0;
+  for (const row of toMigrate) {
+    try {
+      // Convert base64 to blob
+      const base64 = row.data.photo;
+      const mimeMatch = base64.match(/data:(image\/\w+);base64,/);
+      const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+      const ext = mime.split('/')[1] || 'jpg';
+      const b64data = base64.split(',')[1];
+      const byteChars = atob(b64data);
+      const byteArr = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+      const blob = new Blob([byteArr], { type: mime });
+
+      // Upload to storage
+      const path = `${currentUser.id}/${row.id}.${ext}`;
+      const { error: uploadErr } = await sb.storage.from('catch-photos').upload(path, blob, {
+        cacheControl: '3600', upsert: true
+      });
+      if (uploadErr) throw uploadErr;
+
+      // Get public URL
+      const { data: urlData } = sb.storage.from('catch-photos').getPublicUrl(path);
+      const url = urlData.publicUrl;
+
+      // Update catch record
+      const updatedData = { ...row.data, photo: url };
+      const { error: updateErr } = await sb.from('catches').update({ data: updatedData }).eq('id', row.id);
+      if (updateErr) throw updateErr;
+
+      success++;
+      if (btn) btn.textContent = `Migrating... ${success}/${toMigrate.length}`;
+    } catch (e) {
+      console.error('Failed to migrate catch', row.id, e);
+      failed++;
+    }
+  }
+
+  showToast(`✅ Migrated ${success} photos${failed ? ', ' + failed + ' failed' : ''}!`);
+  if (btn) { btn.style.display = 'none'; }
+  await loadCatches();
+  renderStats();
+  renderCatches();
+}
+
 function showToast(msg, error = false) {
   const t = document.getElementById('toast');
   t.textContent = msg;
