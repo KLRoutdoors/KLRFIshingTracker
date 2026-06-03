@@ -1254,10 +1254,12 @@ function showPage(name, e) {
 
 // ── FORM ──────────────────────────────────────────────────────────────────────
 let photoBase64 = null;
+let photoFile = null;
 
 async function previewPhoto(e) {
   const file = e.target.files[0];
   if (!file) return;
+  photoFile = file;
 
   const reader = new FileReader();
   reader.onload = ev => {
@@ -1315,6 +1317,18 @@ function getGPS() {
   }, () => showToast('Could not get location', true));
 }
 
+
+async function uploadPhoto(file) {
+  const ext = file.name.split('.').pop() || 'jpg';
+  const path = `${currentUser.id}/${Date.now()}.${ext}`;
+  const { data, error } = await sb.storage.from('catch-photos').upload(path, file, {
+    cacheControl: '3600', upsert: false
+  });
+  if (error) throw error;
+  const { data: urlData } = sb.storage.from('catch-photos').getPublicUrl(path);
+  return urlData.publicUrl;
+}
+
 function getVal(id) { return document.getElementById(id).value.trim(); }
 
 async function saveCatch() {
@@ -1348,8 +1362,20 @@ async function saveCatch() {
     windDir: getVal('f-wind-dir'),
     moon: getVal('f-moon'),
     notes: getVal('f-notes'),
-    photo: photoBase64
+    photo: null // will be set after upload
   };
+
+  // Upload photo to Storage if we have a new file
+  if (photoFile) {
+    try {
+      entry.photo = await uploadPhoto(photoFile);
+    } catch (e) {
+      showToast('Photo upload failed, saving without photo', true);
+    }
+  } else if (photoBase64 && photoBase64.startsWith('http')) {
+    // Existing URL from storage (editing a catch)
+    entry.photo = photoBase64;
+  }
 
   try {
     if (editingId) {
@@ -1381,6 +1407,7 @@ function resetForm() {
     .forEach(id => document.getElementById(id).value = '');
   document.getElementById('f-datetime').value = '';
   photoBase64 = null;
+  photoFile = null;
   editingId = null;
   document.getElementById('save-btn').textContent = '💾 Save Catch';
   document.getElementById('save-btn').style.background = '';
@@ -2369,7 +2396,8 @@ function editCatch(id) {
 
   // Show photo if exists
   if (c.photo) {
-    photoBase64 = c.photo;
+    photoBase64 = c.photo; // preserve existing URL
+    photoFile = null; // no new file selected yet
     const preview = document.getElementById('photo-preview');
     preview.src = c.photo;
     preview.style.display = 'block';
