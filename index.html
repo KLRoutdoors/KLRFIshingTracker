@@ -1738,78 +1738,67 @@ let pinMarker = null;
 function openPinPicker() {
   document.getElementById('pin-modal').style.display = 'flex';
 
+  // Always destroy and recreate the map so reference pins are fresh
+  if (pinMap) {
+    pinMap.remove();
+    pinMap = null;
+    pinMarker = null;
+  }
+
   setTimeout(() => {
-    if (!pinMap) {
-      const existingLat = parseFloat(document.getElementById('f-lat').value);
-      const existingLng = parseFloat(document.getElementById('f-lng').value);
-      const startLat = existingLat || 0;
-      const startLng = existingLng || 0;
-      const zoom = existingLat ? 13 : 2;
+    const existingLat = parseFloat(document.getElementById('f-lat').value);
+    const existingLng = parseFloat(document.getElementById('f-lng').value);
 
-      pinMap = L.map('pin-map').setView([startLat, startLng], zoom);
-      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: 'Tiles © Esri', maxZoom: 19
-      }).addTo(pinMap);
-      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
-        attribution: '', maxZoom: 19, opacity: 0.8
-      }).addTo(pinMap);
+    pinMap = L.map('pin-map').setView([0, 0], 2);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles © Esri', maxZoom: 19
+    }).addTo(pinMap);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+      attribution: '', maxZoom: 19, opacity: 0.8
+    }).addTo(pinMap);
 
-      pinMap.on('click', function(e) {
-        const { lat, lng } = e.latlng;
-        if (pinMarker) pinMarker.remove();
-        pinMarker = L.marker([lat, lng]).addTo(pinMap);
-        document.getElementById('pin-coords').textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-        const btn = document.getElementById('pin-confirm-btn');
-        btn.disabled = false;
-        btn.style.opacity = '1';
-      });
+    // Add reference pins for all existing catches
+    const refIcon = L.divIcon({
+      className: '',
+      html: '<div style="width:11px;height:11px;border-radius:50%;background:#3b9eff;border:2px solid white;opacity:0.75;box-shadow:0 1px 4px rgba(0,0,0,0.4);"></div>',
+      iconSize: [11, 11], iconAnchor: [5, 5], popupAnchor: [0, -8]
+    });
+    catches.filter(c => c.lat && c.lng).forEach(c => {
+      const m = L.marker([c.lat, c.lng], { icon: refIcon }).addTo(pinMap);
+      m.bindPopup(`<div style="font-size:0.82rem;"><strong>${c.species}</strong>${c.location ? '<br>📍 ' + c.location : ''}</div>`, { maxWidth: 160 });
+    });
 
-      // Add reference pins for existing catches (no effect on zoom)
-      const refIcon = L.divIcon({
-        className: '',
-        html: '<div style="width:10px;height:10px;border-radius:50%;background:#3b9eff;border:2px solid rgba(255,255,255,0.6);opacity:0.7;"></div>',
-        iconSize: [10, 10], iconAnchor: [5, 5], popupAnchor: [0, -8]
-      });
-      catches.filter(c => c.lat && c.lng).forEach(c => {
-        const m = L.marker([c.lat, c.lng], { icon: refIcon }).addTo(pinMap);
-        m.bindPopup(`<div style="font-size:0.82rem;"><strong>${c.species}</strong>${c.location ? '<br>📍 ' + c.location : ''}</div>`, { maxWidth: 160 });
-      });
+    pinMap.on('click', function(e) {
+      const { lat, lng } = e.latlng;
+      if (pinMarker) pinMarker.remove();
+      pinMarker = L.marker([lat, lng]).addTo(pinMap);
+      document.getElementById('pin-coords').textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+      const btn = document.getElementById('pin-confirm-btn');
+      btn.disabled = false;
+      btn.style.opacity = '1';
+    });
 
-      // Center on existing pin, then GPS, then default
-      if (existingLat) {
-        pinMarker = L.marker([existingLat, existingLng]).addTo(pinMap);
-        pinMap.setView([existingLat, existingLng], 13);
-        document.getElementById('pin-coords').textContent = `${existingLat.toFixed(6)}, ${existingLng.toFixed(6)}`;
-        const btn = document.getElementById('pin-confirm-btn');
-        btn.disabled = false;
-        btn.style.opacity = '1';
-      } else {
-        document.getElementById('pin-coords').textContent = 'Getting your location…';
-        navigator.geolocation.getCurrentPosition(pos => {
-          pinMap.setView([pos.coords.latitude, pos.coords.longitude], 13);
-          document.getElementById('pin-coords').textContent = 'Tap to drop a pin';
-        }, () => {
-          pinMap.setView([0, 0], 2);
-          document.getElementById('pin-coords').textContent = 'Tap to drop a pin';
-        });
-      }
+    // Center: existing pin first, then GPS, then world view
+    if (existingLat && existingLng) {
+      pinMarker = L.marker([existingLat, existingLng]).addTo(pinMap);
+      pinMap.setView([existingLat, existingLng], 13);
+      document.getElementById('pin-coords').textContent = `${existingLat.toFixed(6)}, ${existingLng.toFixed(6)}`;
+      const btn = document.getElementById('pin-confirm-btn');
+      btn.disabled = false;
+      btn.style.opacity = '1';
     } else {
-      // Map already exists — refresh reference pins
-      pinMap.eachLayer(layer => {
-        if (layer instanceof L.Marker && layer !== pinMarker) layer.remove();
-      });
-      const refIcon = L.divIcon({
-        className: '',
-        html: '<div style="width:10px;height:10px;border-radius:50%;background:#3b9eff;border:2px solid rgba(255,255,255,0.6);opacity:0.7;"></div>',
-        iconSize: [10, 10], iconAnchor: [5, 5], popupAnchor: [0, -8]
-      });
-      catches.filter(c => c.lat && c.lng).forEach(c => {
-        const m = L.marker([c.lat, c.lng], { icon: refIcon }).addTo(pinMap);
-        m.bindPopup(`<div style="font-size:0.82rem;"><strong>${c.species}</strong>${c.location ? '<br>📍 ' + c.location : ''}</div>`, { maxWidth: 160 });
+      document.getElementById('pin-coords').textContent = 'Getting your location…';
+      navigator.geolocation.getCurrentPosition(pos => {
+        pinMap.setView([pos.coords.latitude, pos.coords.longitude], 13);
+        document.getElementById('pin-coords').textContent = 'Tap to drop a pin';
+      }, () => {
+        pinMap.setView([0, 0], 2);
+        document.getElementById('pin-coords').textContent = 'Tap to drop a pin';
       });
     }
+
     pinMap.invalidateSize();
-  }, 100);
+  }, 150);
 }
 
 function closePinPicker() {
