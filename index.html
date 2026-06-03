@@ -1252,6 +1252,8 @@ function showPage(name, e) {
   if (name === 'map') renderMap();
   if (name === 'groups') renderGroups();
   if (name === 'board') renderBoard();
+  const fab = document.getElementById('fab');
+  if (fab) fab.style.display = name === 'log' ? 'none' : 'flex';
 }
 
 // ── FORM ──────────────────────────────────────────────────────────────────────
