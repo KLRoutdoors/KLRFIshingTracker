@@ -675,7 +675,8 @@
             <h3>📍 Location</h3>
             <div class="form-group">
               <label>Location Name</label>
-              <input type="text" id="f-location" placeholder="e.g. Lake Eildon, Snobs Creek">
+              <input type="text" id="f-location" placeholder="e.g. Lake Eildon, Snobs Creek" list="location-list" autocomplete="off">
+              <datalist id="location-list"></datalist>
             </div>
             <div class="form-row">
               <div class="form-group">
@@ -693,7 +694,8 @@
             </div>
             <div class="form-group" style="margin-top:12px;">
               <label>Spot Notes</label>
-              <input type="text" id="f-spot" placeholder="e.g. Near fallen log, 5m off bank">
+              <input type="text" id="f-spot" placeholder="e.g. Near fallen log, 5m off bank" list="spot-list" autocomplete="off">
+              <datalist id="spot-list"></datalist>
             </div>
           </div>
 
@@ -823,11 +825,8 @@
         </table>
       </div>
       <div class="chart-card">
-        <h3>Best Lures / Baits</h3>
-        <table class="pattern-table" id="table-lures">
-          <thead><tr><th>Lure / Bait</th><th>Catches</th><th>Avg Weight</th></tr></thead>
-          <tbody></tbody>
-        </table>
+        <h3>Catches by Moon Phase</h3>
+        <div class="chart-wrap"><canvas id="chart-moon"></canvas></div>
       </div>
     </div>
   </div>
@@ -1538,11 +1537,29 @@ function renderPatterns() {
   destroyChart('species');
   const speciesCount = {};
   catches.forEach(c => speciesCount[c.species] = (speciesCount[c.species] || 0) + 1);
+  const total = catches.length;
   const speciesEntries = Object.entries(speciesCount).sort((a,b) => b[1]-a[1]).slice(0,8);
   chartInstances['species'] = new Chart(document.getElementById('chart-species'), {
-    type: 'doughnut',
-    data: { labels: speciesEntries.map(e=>e[0]), datasets: [{ data: speciesEntries.map(e=>e[1]), backgroundColor: PALETTE, borderWidth: 0 }] },
-    options: { plugins: { legend: { position:'right', labels:{ color:'#7a9bb5', font:{size:11} } } }, cutout:'55%' }
+    type: 'bar',
+    data: {
+      labels: speciesEntries.map(e => e[0]),
+      datasets: [{ data: speciesEntries.map(e => e[1]), backgroundColor: PALETTE.map(c => c + '99'), borderColor: PALETTE, borderWidth: 2, borderRadius: 4 }]
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.raw} catch${ctx.raw !== 1 ? 'es' : ''} (${Math.round(ctx.raw / total * 100)}%)`
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { color: '#7a9bb5', stepSize: 1 }, grid: { color: '#1e3045' } },
+        y: { ticks: { color: '#7a9bb5', font: { size: 11 } }, grid: { color: '#1e3045' } }
+      }
+    }
   });
 
   destroyChart('month');
@@ -1617,18 +1634,29 @@ function renderPatterns() {
     return `<tr><td>${loc}</td><td style="color:var(--accent2)">${d.count}</td><td>${best}</td><td>${avgW}</td></tr>`;
   }).join('') || '<tr><td colspan="4" style="color:var(--muted); text-align:center;">No location data yet</td></tr>';
 
-  const lureMap = {};
-  catches.filter(c=>c.lureName||c.lureType).forEach(c => {
-    const key = c.lureName || c.lureType;
-    if (!lureMap[key]) lureMap[key] = { count:0, weights:[] };
-    lureMap[key].count++;
-    if (c.weight) lureMap[key].weights.push(c.weight);
+  destroyChart('moon');
+  const moonPhases = ['New Moon','Waxing Crescent','First Quarter','Waxing Gibbous','Full Moon','Waning Gibbous','Last Quarter','Waning Crescent'];
+  const moonEmoji = ['🌑','🌒','🌓','🌔','🌕','🌖','🌗','🌘'];
+  const moonCount = {};
+  moonPhases.forEach(p => moonCount[p] = 0);
+  catches.filter(c => c.moon).forEach(c => { if (moonCount[c.moon] !== undefined) moonCount[c.moon]++; });
+  const moonLabels = moonPhases.map((p, i) => moonEmoji[i] + ' ' + p);
+  const moonData = moonPhases.map(p => moonCount[p]);
+  const moonColors = ['#1a1a2e','#2d2d5e','#4a4a9c','#7b7bc4','#f5e642','#b8a830','#7a6e1f','#3d3510'];
+  chartInstances['moon'] = new Chart(document.getElementById('chart-moon'), {
+    type: 'bar',
+    data: {
+      labels: moonLabels,
+      datasets: [{ data: moonData, backgroundColor: moonColors.map(c => c + 'cc'), borderColor: moonColors, borderWidth: 2, borderRadius: 4 }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#7a9bb5', font: { size: 10 } }, grid: { color: '#1e3045' } },
+        y: { ticks: { color: '#7a9bb5', stepSize: 1 }, grid: { color: '#1e3045' } }
+      }
+    }
   });
-  const lureRows = Object.entries(lureMap).sort((a,b)=>b[1].count-a[1].count).slice(0,6);
-  document.querySelector('#table-lures tbody').innerHTML = lureRows.map(([lure, d]) => {
-    const avgW = d.weights.length ? (d.weights.reduce((a,b)=>a+b,0)/d.weights.length).toFixed(2) + ' lbs' : '—';
-    return `<tr><td>${lure}</td><td style="color:var(--accent2)">${d.count}</td><td>${avgW}</td></tr>`;
-  }).join('') || '<tr><td colspan="3" style="color:var(--muted); text-align:center;">No lure data yet</td></tr>';
 }
 
 // ── MAP ───────────────────────────────────────────────────────────────────────
@@ -1915,15 +1943,14 @@ function getMoonPhase(date) {
 
 // ── TACKLE SUGGESTIONS ────────────────────────────────────────────────────────
 function populateTackleLists() {
-  const rods  = [...new Set(catches.map(c => c.rod).filter(Boolean))];
-  const reels = [...new Set(catches.map(c => c.reel).filter(Boolean))];
-  const lines = [...new Set(catches.map(c => c.line).filter(Boolean))];
-  const lures = [...new Set(catches.map(c => c.lureName).filter(Boolean))];
+  const uniq = key => [...new Set(catches.map(c => c[key]).filter(Boolean))];
 
-  fillDatalist('rod-list', rods);
-  fillDatalist('reel-list', reels);
-  fillDatalist('line-list', lines);
-  fillDatalist('lure-list', lures);
+  fillDatalist('rod-list',      uniq('rod'));
+  fillDatalist('reel-list',     uniq('reel'));
+  fillDatalist('line-list',     uniq('line'));
+  fillDatalist('lure-list',     uniq('lureName'));
+  fillDatalist('location-list', uniq('location'));
+  fillDatalist('spot-list',     uniq('spot'));
 }
 
 function fillDatalist(id, items) {
