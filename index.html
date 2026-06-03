@@ -1167,7 +1167,7 @@ async function initApp(session) {
   try { await loadCatches(); } catch (e) { console.error(e); }
   document.getElementById('loading').style.display = 'none';
   document.getElementById('app').style.display = 'block';
-  document.getElementById('fab').style.display = 'flex';
+  document.getElementById('fab').style.display = 'none';
   document.getElementById('f-datetime').value = '';
   renderStats();
   renderCatches();
