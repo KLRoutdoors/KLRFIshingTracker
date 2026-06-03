@@ -31,7 +31,7 @@
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
-  html, body { overflow-x: hidden; max-width: 100vw; position: relative; overscroll-behavior-y: contain; }
+  html, body { overflow-x: hidden; max-width: 100vw; position: relative; }
 
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -558,7 +558,6 @@
       <button class="nav-tab" onclick="showPage('board', event)">Bragging Board</button>
     </nav>
     <div class="header-right">
-      <button id="migrate-btn" onclick="migratePhotosToStorage()" style="padding:6px 12px; background:var(--accent2); border:none; border-radius:8px; color:#fff; font-size:0.75rem; font-weight:600; cursor:pointer; white-space:nowrap;">📦 Migrate Photos</button>
       <div class="user-badge" id="user-badge"></div>
       <button class="btn-logout" onclick="logout()">Sign Out</button>
     </div>
