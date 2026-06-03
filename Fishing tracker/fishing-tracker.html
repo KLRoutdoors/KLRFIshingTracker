@@ -871,7 +871,13 @@ const SUPABASE_URL  = 'https://yynjnazgojppwaopvjru.supabase.co';
 const SUPABASE_KEY  = 'sb_publishable_XCkHPBLbwoA3RRp60KGKPw_55nvrWrw';
 // ─────────────────────────────────────────────────────────────────────────────
 
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true
+  }
+});
 let catches = [];
 let currentUser = null;
 
@@ -965,6 +971,7 @@ async function loadCatches() {
   const { data, error } = await sb
     .from('catches')
     .select('*')
+    .eq('user_id', currentUser.id)
     .order('created_at', { ascending: false });
 
   if (error) { showToast('Error loading catches', true); return; }
@@ -974,7 +981,7 @@ async function loadCatches() {
 async function saveCatchToDb(entry) {
   const { data, error } = await sb
     .from('catches')
-    .insert({ data: entry })
+    .insert({ user_id: currentUser.id, data: entry })
     .select()
     .single();
 
