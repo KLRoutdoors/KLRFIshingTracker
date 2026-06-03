@@ -794,9 +794,14 @@
 
   <!-- PATTERNS PAGE -->
   <div id="page-patterns" class="page">
-    <div style="margin-bottom:20px;">
-      <h2 style="font-size:1.3rem; font-weight:700;">Patterns &amp; Insights</h2>
-      <p style="color:var(--muted); font-size:0.9rem; margin-top:4px;">Spot what's working and when.</p>
+    <div style="margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+      <div>
+        <h2 style="font-size:1.3rem; font-weight:700;">Patterns &amp; Insights</h2>
+        <p style="color:var(--muted); font-size:0.9rem; margin-top:4px;">Spot what's working and when.</p>
+      </div>
+      <select id="pattern-species-filter" onchange="renderPatterns()" style="background:var(--surface2); border:1px solid var(--border); border-radius:8px; color:var(--text); padding:9px 14px; font-size:0.875rem; min-width:160px;">
+        <option value="">All Species</option>
+      </select>
     </div>
     <div class="charts-grid">
       <div class="chart-card">
@@ -816,7 +821,7 @@
         <div class="chart-wrap"><canvas id="chart-time"></canvas></div>
       </div>
     </div>
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px;">
       <div class="chart-card">
         <h3>Top Locations</h3>
         <table class="pattern-table" id="table-locations">
@@ -826,7 +831,7 @@
       </div>
       <div class="chart-card">
         <h3>Catches by Moon Phase</h3>
-        <div class="chart-wrap"><canvas id="chart-moon"></canvas></div>
+        <div class="chart-wrap" style="height:300px;"><canvas id="chart-moon"></canvas></div>
       </div>
     </div>
   </div>
@@ -1534,9 +1539,19 @@ const PALETTE = ['#3b9eff','#00c896','#ffb347','#ff5c5c','#c97fff','#5ce8ff','#f
 function renderPatterns() {
   if (!catches.length) return;
 
+  // Populate species dropdown
+  const filter = document.getElementById('pattern-species-filter');
+  const current = filter.value;
+  const allSpecies = [...new Set(catches.map(c => c.species))].sort();
+  filter.innerHTML = '<option value="">All Species</option>' + allSpecies.map(s => `<option value="${s}" ${s === current ? 'selected' : ''}>${s}</option>`).join('');
+
+  // Filter catches by selected species
+  const filtered = current ? catches.filter(c => c.species === current) : catches;
+  if (!filtered.length) return;
+
   destroyChart('species');
   const speciesCount = {};
-  catches.forEach(c => speciesCount[c.species] = (speciesCount[c.species] || 0) + 1);
+  filtered.forEach(c => speciesCount[c.species] = (speciesCount[c.species] || 0) + 1);
   const total = catches.length;
   const speciesEntries = Object.entries(speciesCount).sort((a,b) => b[1]-a[1]).slice(0,8);
   chartInstances['species'] = new Chart(document.getElementById('chart-species'), {
@@ -1564,7 +1579,7 @@ function renderPatterns() {
 
   destroyChart('month');
   const monthCount = Array(12).fill(0);
-  catches.forEach(c => { const m = new Date(c.datetime).getMonth(); monthCount[m]++; });
+  filtered.forEach(c => { const m = new Date(c.datetime).getMonth(); monthCount[m]++; });
   chartInstances['month'] = new Chart(document.getElementById('chart-month'), {
     type: 'bar',
     data: {
@@ -1579,7 +1594,7 @@ function renderPatterns() {
 
   destroyChart('weather');
   const wxCount = {};
-  catches.filter(c=>c.conditions).forEach(c => wxCount[c.conditions] = (wxCount[c.conditions]||0)+1);
+  filtered.filter(c=>c.conditions).forEach(c => wxCount[c.conditions] = (wxCount[c.conditions]||0)+1);
   const wxEntries = Object.entries(wxCount).sort((a,b)=>b[1]-a[1]);
   chartInstances['weather'] = new Chart(document.getElementById('chart-weather'), {
     type: 'bar',
@@ -1597,7 +1612,7 @@ function renderPatterns() {
   destroyChart('time');
   const timeLabels = ['Dawn\n4–8am','Morning\n8–12pm','Afternoon\n12–5pm','Evening\n5–9pm','Night\n9pm–4am'];
   const timeData = [0,0,0,0,0];
-  catches.forEach(c => {
+  filtered.forEach(c => {
     const h = new Date(c.datetime).getHours();
     if (h >= 4 && h < 8) timeData[0]++;
     else if (h >= 8 && h < 12) timeData[1]++;
@@ -1621,7 +1636,7 @@ function renderPatterns() {
   });
 
   const locMap = {};
-  catches.filter(c=>c.location).forEach(c => {
+  filtered.filter(c=>c.location).forEach(c => {
     if (!locMap[c.location]) locMap[c.location] = { count:0, weights:[], species:{} };
     locMap[c.location].count++;
     if (c.weight) locMap[c.location].weights.push(c.weight);
@@ -1639,7 +1654,7 @@ function renderPatterns() {
   const moonEmoji = ['🌑','🌒','🌓','🌔','🌕','🌖','🌗','🌘'];
   const moonCount = {};
   moonPhases.forEach(p => moonCount[p] = 0);
-  catches.filter(c => c.moon).forEach(c => { if (moonCount[c.moon] !== undefined) moonCount[c.moon]++; });
+  filtered.filter(c => c.moon).forEach(c => { if (moonCount[c.moon] !== undefined) moonCount[c.moon]++; });
   const moonLabels = moonPhases.map((p, i) => moonEmoji[i] + ' ' + p);
   const moonData = moonPhases.map(p => moonCount[p]);
   const moonColors = ['#1a1a2e','#2d2d5e','#4a4a9c','#7b7bc4','#f5e642','#b8a830','#7a6e1f','#3d3510'];
@@ -1650,11 +1665,13 @@ function renderPatterns() {
       datasets: [{ data: moonData, backgroundColor: moonColors.map(c => c + 'cc'), borderColor: moonColors, borderWidth: 2, borderRadius: 4 }]
     },
     options: {
+      indexAxis: 'y',
       plugins: { legend: { display: false } },
       scales: {
-        x: { ticks: { color: '#7a9bb5', font: { size: 10 } }, grid: { color: '#1e3045' } },
-        y: { ticks: { color: '#7a9bb5', stepSize: 1 }, grid: { color: '#1e3045' } }
-      }
+        x: { ticks: { color: '#7a9bb5', stepSize: 1 }, grid: { color: '#1e3045' } },
+        y: { ticks: { color: '#7a9bb5', font: { size: 10 }, maxRotation: 0 }, grid: { color: '#1e3045' } }
+      },
+      layout: { padding: { left: 0 } }
     }
   });
 }
