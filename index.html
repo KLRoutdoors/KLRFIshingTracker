@@ -1162,11 +1162,14 @@ async function initApp(session) {
   currentUser = session.user;
   document.getElementById('user-badge').textContent = currentUser.email;
   document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('loading').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  try { await loadCatches(); } catch (e) { console.error(e); }
   document.getElementById('loading').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   document.getElementById('f-datetime').value = '';
-  // Load catches in background — no blocking loading screen
-  try { await loadCatches(); renderStats(); renderCatches(); } catch (e) { console.error(e); }
+  renderStats();
+  renderCatches();
   const shareId = new URLSearchParams(window.location.search).get('share');
   if (shareId) setTimeout(() => loadSharedCatch(shareId), 500);
 }
@@ -1175,7 +1178,7 @@ async function initApp(session) {
 const sessionTimeout = setTimeout(() => {
   document.getElementById('loading').style.display = 'none';
   document.getElementById('auth-screen').style.display = 'flex';
-}, 5000); // fallback if session check hangs
+}, 8000); // fallback if session check hangs
 
 sb.auth.getSession().then(({ data: { session } }) => {
   clearTimeout(sessionTimeout);
