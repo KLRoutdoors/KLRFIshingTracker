@@ -3932,7 +3932,7 @@ function calcSolunarHourly(date, lat, lng) {
   let base = daylightScore + overlapScore + alignScore + seasonScore;
 
   // Moon phase and distance MULTIPLY the base (not add) — bad night stays bad
-  const moonMultiplier = 0.75 + (phaseScore / 8) * 0.15 + (distScore / 5) * 0.10;
+  const moonMultiplier = 0.65 + (phaseScore / 8) * 0.25 + (distScore / 5) * 0.10;
   let rating = Math.round(base * moonMultiplier);
 
   // Extreme bonus: perigee full/new moon can push good days exceptional
@@ -3942,7 +3942,7 @@ function calcSolunarHourly(date, lat, lng) {
   if (isFullOrNew && isPerigee && daylightScore > 40) rating = Math.min(96, rating + 6);
   else if (isFullOrNew && daylightScore > 35) rating = Math.min(92, rating + 3);
 
-  rating = Math.min(97, Math.max(4, rating));
+  rating = Math.min(97, Math.max(3, rating));
 
   return { hours, major, minor, sun, moon, phaseInfo, dayRating: rating };
 }
