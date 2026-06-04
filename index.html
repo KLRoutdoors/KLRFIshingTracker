@@ -4404,6 +4404,7 @@ async function saveGroupAvatar() {
       if (uploadErr) throw new Error('Upload failed: ' + uploadErr.message);
       const { data: urlData } = sb.storage.from('catch-photos').getPublicUrl(path);
       avatarToSave = urlData.publicUrl + '?t=' + Date.now();
+      console.log('Avatar URL:', avatarToSave);
       pendingGroupAvatarFile = null;
     } else if (avatarToSave && avatarToSave.startsWith('data:')) {
       // base64 preview with no file — shouldn't happen but handle it
@@ -4411,6 +4412,7 @@ async function saveGroupAvatar() {
       return;
     }
 
+    console.log('Saving to DB:', avatarToSave.substring(0,80));
     const { error } = await sb.from('groups').update({ avatar: avatarToSave }).eq('id', currentGroup.id);
     if (error) throw error;
     pendingGroupAvatar = avatarToSave;
@@ -4432,12 +4434,13 @@ async function saveGroupAvatar() {
     }
     document.getElementById('group-avatar-modal').style.display = 'none';
     showToast('✅ Group photo updated!');
-    // Force refresh the detail view avatar from fresh DB data
     const { data: freshGroup } = await sb.from('groups').select('*').eq('id', currentGroup.id).single();
+    console.log('Fresh from DB avatar:', freshGroup?.avatar?.substring(0,80));
     if (freshGroup) {
       currentGroup.avatar = freshGroup.avatar;
       const idx = myGroups.findIndex(g => g.id === currentGroup.id);
       if (idx !== -1) myGroups[idx].avatar = freshGroup.avatar;
+      console.log('Calling updateGroupAvatarUI with:', freshGroup.avatar?.substring(0,80));
       updateGroupAvatarUI(freshGroup.avatar);
       // Also update list card
       const listCard = document.getElementById('group-list-avatar-' + currentGroup.id);
