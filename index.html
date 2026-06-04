@@ -1833,9 +1833,9 @@ function renderCatches() {
             ${(c.lureName || c.lureType) ? `<span class="chip">🎣 ${c.lureName || c.lureType}</span>` : ''}
             ${c.rod ? `<span class="chip">🎿 Rod: ${c.rod}</span>` : ''}
             ${c.reel ? `<span class="chip">🔄 Reel: ${c.reel}</span>` : ''}
-            ${(show('airTemp') && c.airTemp) ? `<span class="chip">🌡 ${c.airTemp}°F</span>` : ''}
-            ${(show('moon') && c.moon) ? `<span class="chip">🌙 ${c.moon}</span>` : ''}
-            ${(show('depth') && c.depth) ? `<span class="chip">↕️ ${c.depth}ft</span>` : ''}
+            ${c.airTemp ? `<span class="chip">🌡 ${c.airTemp}°F</span>` : ''}
+            ${c.moon ? `<span class="chip">🌙 ${c.moon}</span>` : ''}
+            ${c.depth ? `<span class="chip">↕️ ${c.depth}ft</span>` : ''}
           </div>
           ${c.notes ? `<div style="font-size:0.82rem; color:var(--muted); margin-top:6px; font-style:italic;">${c.notes}</div>` : ''}
         </div>
@@ -1910,10 +1910,29 @@ async function loadPatternGroupCatches(groupId) {
   renderPatterns();
 }
 
-function updatePatternGroupButtons() {
+async function updatePatternGroupButtons() {
   const container = document.getElementById('pattern-group-btns');
-  if (!container || !myGroups.length) return;
-  container.innerHTML = myGroups.map(g => `
+  if (!container) return;
+
+  // Load groups if not yet loaded
+  if (!myGroups.length) {
+    const { data } = await sb.from('groups').select('*, group_members(user_id, display_name)');
+    myGroups = data || [];
+  }
+
+  if (!myGroups.length) {
+    container.innerHTML = '';
+    return;
+  }
+
+  // Only show groups the user is actually a member of
+  const memberGroupIds = myGroups
+    .filter(g => g.group_members?.some(m => m.user_id === currentUser.id))
+    .map(g => g.id);
+
+  const groupsToShow = myGroups.filter(g => memberGroupIds.includes(g.id));
+
+  container.innerHTML = groupsToShow.map(g => `
     <button class="btn btn-sm pattern-group-btn" data-group-id="${g.id}"
       onclick="setPatternSource('${g.id}')"
       style="font-size:0.8rem; background:var(--surface2); border:1px solid var(--border); color:var(--text);">
