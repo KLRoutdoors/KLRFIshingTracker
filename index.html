@@ -3523,43 +3523,46 @@ function calcSolunarHourly(date, lat, lng) {
     return Math.min(100, Math.max(3, Math.round(score * combinedMultiplier)));
   });
 
-  // ── DAY RATING — 6-factor score ───────────────────────────────────────────
-  // 1. MOON PHASE (20%) — reduced so daylight dominates variation
-  const phaseScore = phaseInfo.phaseMultiplier * 20;
+  // ── DAY RATING — daylight-dominated score ─────────────────────────────────
+  // Moon phase/distance are MULTIPLIERS on the daylight score, not additive
+  // This means a bad daylight day stays bad regardless of moon phase
 
-  // 2. MOON DISTANCE (15%) — perigee is significantly better
-  const distScore = phaseInfo.distBonus * 15;
+  // 1. MOON PHASE (8%) — small additive bonus only
+  const phaseScore = phaseInfo.phaseMultiplier * 8;
 
-  // 3. DAYLIGHT OVERLAP (35%) — THE most important factor, causes big day-to-day swings
-  // Major peaks in daylight = full score. At night = near zero. This is what causes
-  // 85% one day dropping to 20% two days later as peaks shift through the night.
+  // 2. MOON DISTANCE (5%) — small additive bonus only
+  const distScore = (phaseInfo.distBonus - 0.82) / 0.18 * 5;
+
+  // 3. DAYLIGHT OVERLAP (62%) — completely dominates the score
+  // This is what swings days from 15% to 85%
   let daylightScore = 0;
   if (sun) {
     const allPeaks = [
-      { t: moon.overhead, weight: 14, isMajor: true },
-      { t: moon.underfoot, weight: 12, isMajor: true },
-      { t: moon.rise, weight: 5, isMajor: false },
-      { t: moon.set, weight: 4, isMajor: false },
+      { t: moon.overhead, weight: 20 },   // major overhead
+      { t: moon.underfoot, weight: 18 },  // major underfoot
+      { t: moon.rise, weight: 12 },       // minor rise
+      { t: moon.set, weight: 12 },        // minor set
     ].filter(p => p.t !== null);
 
     allPeaks.forEach(p => {
-      const inDay = isDaylight(p.t, sun);
-      if (inDay) {
-        daylightScore += p.weight;
+      if (isDaylight(p.t, sun)) {
+        daylightScore += p.weight; // full credit
       } else {
-        // Twilight window (within 45 min of sunrise/sunset) = 30% credit
+        // Only very close to dawn/dusk gets any credit
         const tillRise = Math.min(hoursTill(p.t, sun.rise), hoursTill(sun.rise, p.t));
         const tillSet = Math.min(hoursTill(p.t, sun.set), hoursTill(sun.set, p.t));
         const nearLight = Math.min(tillRise, tillSet);
-        if (nearLight < 0.75) daylightScore += p.weight * (1 - nearLight / 0.75) * 0.3;
-        // Deep night = 0 credit (not even partial)
+        if (nearLight < 1.0) {
+          daylightScore += p.weight * (1 - nearLight) * 0.25; // max 25% credit near twilight
+        }
+        // More than 1hr into night = zero
       }
     });
-    const maxPossible = allPeaks.reduce((a,b) => a + b.weight, 0);
-    daylightScore = (daylightScore / maxPossible) * 35;
-  } else { daylightScore = 17; }
+    const maxPossible = allPeaks.reduce((a, b) => a + b.weight, 0);
+    daylightScore = (daylightScore / maxPossible) * 62;
+  } else { daylightScore = 31; }
 
-  // 4. PEAK OVERLAP / STACKING (12%) — multiple peaks close together compound
+  // 4. PEAK OVERLAP / STACKING (8%)
   let overlapScore = 0;
   const allPeakTimes = [moon.overhead, moon.underfoot, moon.rise, moon.set].filter(t => t !== null);
   if (sun) allPeakTimes.push(sun.rise, sun.set);
@@ -3567,26 +3570,30 @@ function calcSolunarHourly(date, lat, lng) {
     allPeakTimes.slice(i+1).forEach(t2 => {
       let diff = Math.abs(t1 - t2);
       if (diff > 12) diff = 24 - diff;
-      if (diff < 2.5) overlapScore += (1 - diff / 2.5) * 12;
+      if (diff < 2.5) overlapScore += (1 - diff / 2.5) * 8;
     });
   });
-  overlapScore = Math.min(12, overlapScore);
+  overlapScore = Math.min(8, overlapScore);
 
-  // 5. SOLAR NOON ALIGNMENT (8%) — combined gravity peaks
-  const alignScore = (solarAlignment - 1.0) / 0.12 * 8;
+  // 5. SOLAR NOON ALIGNMENT (5%)
+  const alignScore = (solarAlignment - 1.0) / 0.12 * 5;
 
-  // 6. SEASONAL FACTOR (10%) — spring/fall feeding bonuses
-  const seasonScore = (seasonal - 0.82) / 0.18 * 10;
+  // 6. SEASONAL FACTOR (12%) — spring/fall feeding bonuses
+  const seasonScore = (seasonal - 0.76) / 0.24 * 12;
 
-  let rating = Math.round(phaseScore + distScore + daylightScore + overlapScore + alignScore + seasonScore);
+  // Base score from daylight + overlap + alignment + seasonal
+  let base = daylightScore + overlapScore + alignScore + seasonScore;
 
-  // Hard cap: poor nights stay poor, perigee full moons can hit 96%
-  const isFullOrNew = phaseInfo.phase < 0.04 || phaseInfo.phase > 0.96 ||
+  // Moon phase and distance MULTIPLY the base (not add) — bad night stays bad
+  const moonMultiplier = 0.75 + (phaseScore / 8) * 0.15 + (distScore / 5) * 0.10;
+  let rating = Math.round(base * moonMultiplier);
+
+  // Extreme bonus: perigee full/new moon can push good days exceptional
+  const isFullOrNew = phaseInfo.phase < 0.05 || phaseInfo.phase > 0.95 ||
                       (phaseInfo.phase > 0.46 && phaseInfo.phase < 0.54);
   const isPerigee = phaseInfo.moonDist > 0.85;
-  if (isFullOrNew && isPerigee) rating = Math.min(96, rating + 8);
-  else if (isFullOrNew) rating = Math.min(92, rating + 4);
-  else if (isPerigee) rating = Math.min(88, rating + 3);
+  if (isFullOrNew && isPerigee && daylightScore > 40) rating = Math.min(96, rating + 6);
+  else if (isFullOrNew && daylightScore > 35) rating = Math.min(92, rating + 3);
 
   rating = Math.min(97, Math.max(4, rating));
 
