@@ -556,6 +556,7 @@
       <button class="nav-tab" onclick="showPage('map', event)">Map</button>
       <button class="nav-tab" onclick="showPage('groups', event)">Groups <span id="group-request-badge" style="display:none; background:#ff5c5c; color:#fff; border-radius:50%; font-size:0.65rem; padding:1px 5px; margin-left:3px; font-weight:700;"></span></button>
       <button class="nav-tab" onclick="showPage('board', event)">Bragging Board</button>
+      <button class="nav-tab" onclick="showPage('stats', event)">🏆 My Stats</button>
       <button class="nav-tab" onclick="showPage('solunar', event)">🔥 Bite Times</button>
     </nav>
     <div class="header-right">
@@ -1264,6 +1265,71 @@
       <input type="text" id="sl-notes" placeholder="e.g. Below the dam, east bank" style="width:100%; background:var(--bg); border:1px solid var(--border); border-radius:8px; color:var(--text); padding:9px 12px; font-size:0.9rem; outline:none;" onkeydown="if(event.key==='Enter') saveNewLocation()">
     </div>
     <button class="btn btn-primary" style="width:100%;" onclick="saveNewLocation()">💾 Save Location</button>
+  </div>
+</div>
+
+
+  <!-- STATS PAGE -->
+  <div id="page-stats" class="page">
+    <div style="margin-bottom:20px;">
+      <h2 style="font-size:1.3rem; font-weight:700;">🏆 My Stats & Records</h2>
+      <p style="color:var(--muted); font-size:0.85rem; margin-top:3px;">Your personal fishing history at a glance.</p>
+    </div>
+
+    <!-- Summary Cards -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:12px; margin-bottom:20px;" id="stats-summary"></div>
+
+    <!-- Personal Records -->
+    <div class="chart-card" style="margin-bottom:16px;">
+      <h3 style="margin-bottom:14px;">🥇 Personal Records</h3>
+      <div id="stats-records" style="display:flex; flex-direction:column; gap:10px;"></div>
+    </div>
+
+    <!-- Best Spots -->
+    <div class="chart-card" style="margin-bottom:16px;">
+      <h3 style="margin-bottom:14px;">📍 Best Locations</h3>
+      <div id="stats-locations" style="display:flex; flex-direction:column; gap:8px;"></div>
+    </div>
+
+    <!-- Best Month -->
+    <div class="chart-card" style="margin-bottom:16px;">
+      <h3 style="margin-bottom:14px;">📅 Catches by Month</h3>
+      <div class="chart-wrap"><canvas id="chart-stats-month"></canvas></div>
+    </div>
+
+    <!-- Species breakdown -->
+    <div class="chart-card">
+      <h3 style="margin-bottom:14px;">🐟 Species Breakdown</h3>
+      <div id="stats-species" style="display:flex; flex-direction:column; gap:8px;"></div>
+    </div>
+  </div>
+
+
+<!-- ONBOARDING MODAL -->
+<div id="onboarding-modal" style="display:none; position:fixed; inset:0; z-index:5000; background:rgba(0,0,0,0.85); align-items:center; justify-content:center; padding:20px;">
+  <div style="background:var(--surface); border:1px solid var(--border); border-radius:20px; width:100%; max-width:440px; padding:32px; text-align:center;">
+    <div style="font-size:3rem; margin-bottom:16px;">🎣</div>
+    <h2 style="font-size:1.4rem; font-weight:800; margin-bottom:8px;">Welcome to KLR Fishing Tracker</h2>
+    <p style="color:var(--muted); font-size:0.9rem; margin-bottom:24px; line-height:1.6;">Log every catch, track your patterns, see the best bite times for your location, and compete with friends on the Bragging Board.</p>
+    <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:24px; text-align:left;">
+      <div style="display:flex; align-items:center; gap:12px; padding:12px; background:var(--surface2); border-radius:10px;">
+        <span style="font-size:1.4rem;">📋</span>
+        <div><div style="font-weight:600; font-size:0.9rem;">Log Catch</div><div style="font-size:0.8rem; color:var(--muted);">Record species, size, tackle, weather & location</div></div>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px; padding:12px; background:var(--surface2); border-radius:10px;">
+        <span style="font-size:1.4rem;">📊</span>
+        <div><div style="font-weight:600; font-size:0.9rem;">Patterns & Stats</div><div style="font-size:0.8rem; color:var(--muted);">See what's working, your best spots and personal records</div></div>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px; padding:12px; background:var(--surface2); border-radius:10px;">
+        <span style="font-size:1.4rem;">🔥</span>
+        <div><div style="font-weight:600; font-size:0.9rem;">Bite Times</div><div style="font-size:0.8rem; color:var(--muted);">Solunar forecasts for your exact location</div></div>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px; padding:12px; background:var(--surface2); border-radius:10px;">
+        <span style="font-size:1.4rem;">👥</span>
+        <div><div style="font-weight:600; font-size:0.9rem;">Groups</div><div style="font-size:0.8rem; color:var(--muted);">Share catches with friends and compete on the Bragging Board</div></div>
+      </div>
+    </div>
+    <button class="btn btn-primary" style="width:100%; font-size:1rem; padding:14px;" onclick="dismissOnboarding()">🎣 Let's Go Fishing!</button>
   </div>
 </div>
 
@@ -3529,6 +3595,41 @@ async function deleteComment(commentId) {
 }
 
 
+
+async function fetchWeatherForBiteTimes() {
+  if (!solunarLat) return;
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${solunarLat}&longitude=${solunarLng}&daily=weathercode,temperature_2m_max,temperature_2m_min,windspeed_10m_max,precipitation_sum&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_days=3`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!data.daily) return;
+
+    const wmoCodes = { 0:'☀️ Clear', 1:'🌤 Mostly Clear', 2:'⛅ Partly Cloudy', 3:'☁️ Overcast', 45:'🌫 Foggy', 48:'🌫 Icy Fog', 51:'🌦 Light Drizzle', 53:'🌧 Drizzle', 61:'🌧 Light Rain', 63:'🌧 Rain', 71:'🌨 Light Snow', 73:'❄️ Snow', 80:'🌦 Showers', 81:'🌧 Heavy Showers', 95:'⛈ Thunderstorm' };
+    const el = document.getElementById('solunar-weather');
+    if (!el) return;
+
+    el.innerHTML = data.daily.time.map((date, i) => {
+      const d = new Date(date);
+      const day = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : d.toLocaleDateString('en-US', { weekday: 'short' });
+      const code = data.daily.weathercode[i];
+      const desc = wmoCodes[code] || '🌡 Mixed';
+      const hi = Math.round(data.daily.temperature_2m_max[i]);
+      const lo = Math.round(data.daily.temperature_2m_min[i]);
+      const wind = Math.round(data.daily.windspeed_10m_max[i]);
+      const rain = data.daily.precipitation_sum[i]?.toFixed(1) || '0';
+      return `<div style="background:var(--surface2); border-radius:10px; padding:12px; text-align:center;">
+        <div style="font-size:0.75rem; font-weight:700; color:var(--muted); text-transform:uppercase; margin-bottom:6px;">${day}</div>
+        <div style="font-size:0.85rem; margin-bottom:6px;">${desc}</div>
+        <div style="font-size:1rem; font-weight:700; color:var(--text);">${hi}° / ${lo}°</div>
+        <div style="font-size:0.75rem; color:var(--muted); margin-top:4px;">💨 ${wind}mph${parseFloat(rain) > 0 ? ' · 🌧 ' + rain + '"' : ''}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    const el = document.getElementById('solunar-weather');
+    if (el) el.innerHTML = '<div style="color:var(--muted); font-size:0.85rem; grid-column:1/-1; text-align:center;">Weather unavailable</div>';
+  }
+}
+
 // ── SOLUNAR CALCULATIONS ──────────────────────────────────────────────────────
 let solunarLat = null, solunarLng = null, solunarDayOffset = 0, solunarDialTimer = null, solunarTzOffset = null;
 
@@ -3670,6 +3771,19 @@ function calcSolunarHourly(date, lat, lng) {
   const moon = getMoonTimes(date, lat, lng);
   const sun = getSunTimes(date, lat, lng);
   const phaseInfo = getMoonPhaseInfo(date);
+  // Species-specific modifiers
+  const speciesSel = document.getElementById('solunar-species')?.value || 'general';
+  const speciesModifier = {
+    general: { nightBonus: 0, dawnDuskBonus: 0, coldPenalty: 0 },
+    bass:    { nightBonus: -0.1, dawnDuskBonus: 0.15, coldPenalty: -0.1 },   // dawn/dusk feeders
+    trout:   { nightBonus: 0.05, dawnDuskBonus: 0.1, coldPenalty: 0.05 },    // cold water, active early
+    catfish: { nightBonus: 0.2, dawnDuskBonus: 0.05, coldPenalty: -0.15 },   // strong night feeders
+    sturgeon:{ nightBonus: 0.1, dawnDuskBonus: 0.05, coldPenalty: 0.1 },     // cold tolerant, tidal
+    walleye: { nightBonus: 0.15, dawnDuskBonus: 0.15, coldPenalty: 0 },      // low light specialists
+    crappie: { nightBonus: 0, dawnDuskBonus: 0.1, coldPenalty: -0.05 },
+    carp:    { nightBonus: -0.05, dawnDuskBonus: 0.1, coldPenalty: -0.2 },
+  }[speciesSel] || { nightBonus: 0, dawnDuskBonus: 0, coldPenalty: 0 };
+
   const seasonal = getSeasonalBonus(date);
   const solarAlignment = getSolarNoonAlignment(moon, sun);
   const combinedMultiplier = phaseInfo.phaseMultiplier * phaseInfo.distBonus * seasonal;
@@ -3742,6 +3856,8 @@ function calcSolunarHourly(date, lat, lng) {
     });
     const maxPossible = allPeaks.reduce((a, b) => a + b.weight, 0);
     daylightScore = (daylightScore / maxPossible) * 62;
+    // Species night/dawn modifier
+    daylightScore = Math.max(0, daylightScore * (1 + speciesModifier.nightBonus));
   } else { daylightScore = 31; }
 
   // 4. PEAK OVERLAP / STACKING (8%)
@@ -3995,6 +4111,7 @@ function getActivityLabel(pct) {
 
 function doRenderSolunar() {
   if (!solunarLat) return;
+  fetchWeatherForBiteTimes();
 
   const today = new Date();
   const target = new Date(today);
@@ -4380,6 +4497,11 @@ async function deleteSavedLocation(id) {
   showToast('Location deleted');
 }
 
+function dismissOnboarding() {
+  localStorage.setItem('klr_onboarded', '1');
+  document.getElementById('onboarding-modal').style.display = 'none';
+}
+
 function refreshSolunar() {
   openSolunarLocationPicker();
 }
@@ -4501,6 +4623,162 @@ window.addEventListener('resize', () => {
   }
 });
 
+
+
+// ── MY STATS ──────────────────────────────────────────────────────────────────
+function renderMyStats() {
+  if (!catches.length) {
+    document.getElementById('stats-summary').innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="icon">🎣</div><p>No catches yet — go fish!</p></div>';
+    return;
+  }
+
+  const total = catches.length;
+  const withWeight = catches.filter(c => c.weight > 0);
+  const withLength = catches.filter(c => c.length > 0);
+  const totalWeight = withWeight.reduce((s, c) => s + c.weight, 0);
+  const avgWeight = withWeight.length ? (totalWeight / withWeight.length).toFixed(1) : null;
+  const heaviest = withWeight.length ? withWeight.reduce((a, b) => a.weight > b.weight ? a : b) : null;
+  const longest = withLength.length ? withLength.reduce((a, b) => a.length > b.length ? a : b) : null;
+  const species = [...new Set(catches.map(c => c.species).filter(Boolean))];
+
+  // Count catches per day to find best day
+  const byDay = {};
+  catches.forEach(c => {
+    if (!c.datetime) return;
+    const day = c.datetime.slice(0, 10);
+    byDay[day] = (byDay[day] || 0) + 1;
+  });
+  const bestDayEntry = Object.entries(byDay).sort((a,b) => b[1]-a[1])[0];
+  const bestDay = bestDayEntry ? { date: bestDayEntry[0], count: bestDayEntry[1] } : null;
+
+  // Streak — consecutive days with catches
+  const sortedDays = Object.keys(byDay).sort();
+  let maxStreak = 1, streak = 1;
+  for (let i = 1; i < sortedDays.length; i++) {
+    const diff = (new Date(sortedDays[i]) - new Date(sortedDays[i-1])) / 86400000;
+    streak = diff === 1 ? streak + 1 : 1;
+    if (streak > maxStreak) maxStreak = streak;
+  }
+
+  // Summary cards
+  const summaryData = [
+    { icon: '🎣', label: 'Total Catches', value: total },
+    { icon: '🐟', label: 'Species', value: species.length },
+    { icon: '⚖️', label: 'Total Weight', value: totalWeight ? totalWeight.toFixed(1) + ' lbs' : '—' },
+    { icon: '📅', label: 'Fishing Days', value: Object.keys(byDay).length },
+    { icon: '🔥', label: 'Best Streak', value: maxStreak + (maxStreak === 1 ? ' day' : ' days') },
+    { icon: '📊', label: 'Avg Weight', value: avgWeight ? avgWeight + ' lbs' : '—' },
+  ];
+
+  document.getElementById('stats-summary').innerHTML = summaryData.map(s => `
+    <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px; text-align:center;">
+      <div style="font-size:1.5rem; margin-bottom:4px;">${s.icon}</div>
+      <div style="font-size:1.2rem; font-weight:800; color:var(--text);">${s.value}</div>
+      <div style="font-size:0.72rem; color:var(--muted); margin-top:2px; text-transform:uppercase; letter-spacing:0.06em;">${s.label}</div>
+    </div>`).join('');
+
+  // Personal records
+  const records = [];
+  if (heaviest) records.push({ icon: '⚖️', label: 'Heaviest Fish', value: `${heaviest.weight} lbs`, sub: `${heaviest.species}${heaviest.location ? ' · ' + heaviest.location : ''}`, date: heaviest.datetime });
+  if (longest) records.push({ icon: '📏', label: 'Longest Fish', value: `${longest.length} in`, sub: `${longest.species}${longest.location ? ' · ' + longest.location : ''}`, date: longest.datetime });
+  if (bestDay) records.push({ icon: '🔥', label: 'Best Day', value: `${bestDay.count} catches`, sub: new Date(bestDay.date).toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'}), date: null });
+
+  // PB per species
+  const pbBySpecies = {};
+  catches.filter(c => c.weight > 0).forEach(c => {
+    if (!pbBySpecies[c.species] || c.weight > pbBySpecies[c.species].weight) pbBySpecies[c.species] = c;
+  });
+  Object.entries(pbBySpecies).forEach(([sp, c]) => {
+    records.push({ icon: '🏆', label: `${sp} PB`, value: `${c.weight} lbs`, sub: c.length ? `${c.length} in` : '', date: c.datetime });
+  });
+
+  document.getElementById('stats-records').innerHTML = records.map(r => `
+    <div style="display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--border);">
+      <div style="font-size:1.4rem; width:32px; text-align:center;">${r.icon}</div>
+      <div style="flex:1;">
+        <div style="font-size:0.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em;">${r.label}</div>
+        <div style="font-size:1.1rem; font-weight:700; color:var(--text);">${r.value}</div>
+        ${r.sub ? `<div style="font-size:0.8rem; color:var(--muted);">${r.sub}</div>` : ''}
+      </div>
+      ${r.date ? `<div style="font-size:0.75rem; color:var(--muted);">${new Date(r.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</div>` : ''}
+    </div>`).join('') || '<div style="color:var(--muted); font-size:0.9rem;">Log more catches to see records!</div>';
+
+  // Best locations
+  const locMap = {};
+  catches.filter(c => c.location).forEach(c => {
+    if (!locMap[c.location]) locMap[c.location] = { count: 0, weight: 0 };
+    locMap[c.location].count++;
+    if (c.weight) locMap[c.location].weight += c.weight;
+  });
+  const locEntries = Object.entries(locMap).sort((a,b) => b[1].count - a[1].count).slice(0, 6);
+  const maxLoc = locEntries[0]?.[1].count || 1;
+  document.getElementById('stats-locations').innerHTML = locEntries.map(([loc, d]) => `
+    <div>
+      <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+        <span style="font-size:0.875rem; font-weight:600; color:var(--text);">📍 ${loc}</span>
+        <span style="font-size:0.8rem; color:var(--muted);">${d.count} catch${d.count !== 1 ? 'es' : ''}${d.weight ? ' · ' + d.weight.toFixed(1) + ' lbs' : ''}</span>
+      </div>
+      <div style="background:var(--surface2); border-radius:4px; height:6px; overflow:hidden;">
+        <div style="background:var(--accent); height:100%; width:${Math.round(d.count/maxLoc*100)}%; border-radius:4px; transition:width 0.4s;"></div>
+      </div>
+    </div>`).join('') || '<div style="color:var(--muted); font-size:0.9rem;">Add locations to your catches to see stats here.</div>';
+
+  // Monthly chart
+  destroyChart('stats-month');
+  const monthCounts = Array(12).fill(0);
+  catches.forEach(c => { if (c.datetime) monthCounts[new Date(c.datetime).getMonth()]++; });
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  chartInstances['stats-month'] = new Chart(document.getElementById('chart-stats-month'), {
+    type: 'bar',
+    data: {
+      labels: MONTHS,
+      datasets: [{ data: monthCounts, backgroundColor: monthCounts.map(v => v === Math.max(...monthCounts) ? '#f5c842' : '#3b9eff99'), borderColor: monthCounts.map(v => v === Math.max(...monthCounts) ? '#f5c842' : '#3b9eff'), borderWidth: 2, borderRadius: 4 }]
+    },
+    options: { plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#7a9bb5' }, grid: { color: '#1e3045' } }, y: { ticks: { color: '#7a9bb5', stepSize: 1 }, grid: { color: '#1e3045' } } } }
+  });
+
+  // Species breakdown
+  const spCount = {};
+  catches.forEach(c => { if (c.species) spCount[c.species] = (spCount[c.species] || 0) + 1; });
+  const spEntries = Object.entries(spCount).sort((a,b) => b[1]-a[1]);
+  const maxSp = spEntries[0]?.[1] || 1;
+  const PALETTE = ['#3b9eff','#00c896','#ffb347','#ff5c5c','#c97fff','#5ce8ff','#ffda6a','#a8ff3e'];
+  document.getElementById('stats-species').innerHTML = spEntries.map(([sp, count], i) => `
+    <div>
+      <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+        <span style="font-size:0.875rem; font-weight:600; color:${PALETTE[i % PALETTE.length]};">${sp}</span>
+        <span style="font-size:0.8rem; color:var(--muted);">${count} (${Math.round(count/total*100)}%)</span>
+      </div>
+      <div style="background:var(--surface2); border-radius:4px; height:6px; overflow:hidden;">
+        <div style="background:${PALETTE[i % PALETTE.length]}; height:100%; width:${Math.round(count/maxSp*100)}%; border-radius:4px;"></div>
+      </div>
+    </div>`).join('');
+}
+
+// ── PHOTO COMPRESSION ─────────────────────────────────────────────────────────
+function compressImage(file, maxSize, quality) {
+  return new Promise(resolve => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > maxSize || height > maxSize) {
+        if (width > height) { height = Math.round(height * maxSize / width); width = maxSize; }
+        else { width = Math.round(width * maxSize / height); height = maxSize; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(blob => {
+        URL.revokeObjectURL(url);
+        resolve(new File([blob], 'photo.jpg', { type: 'image/jpeg' }));
+      }, 'image/jpeg', quality);
+    };
+    img.src = url;
+  });
+}
+
 // ── TOAST ─────────────────────────────────────────────────────────────────────
 
 // ── PHOTO MIGRATION ───────────────────────────────────────────────────────────
@@ -4567,6 +4845,10 @@ async function migratePhotosToStorage() {
   await loadSavedLocations();
   renderStats();
   renderCatches();
+  // Show onboarding for new users
+  if (!catches.length && !localStorage.getItem('klr_onboarded')) {
+    document.getElementById('onboarding-modal').style.display = 'flex';
+  }
 }
 
 function showToast(msg, error = false) {
@@ -4577,6 +4859,5 @@ function showToast(msg, error = false) {
   setTimeout(() => t.classList.remove('show'), 2500);
 }
 </script>
-<button id="fab" onclick="showPage('log', {currentTarget: document.querySelectorAll('.nav-tab')[0]})" style="position:fixed; bottom:80px; right:24px; z-index:9998; padding:13px 24px; border-radius:50px; background:#3b9eff; color:#fff; border:none; font-size:0.9rem; font-weight:700; cursor:pointer; box-shadow:0 4px 18px rgba(59,158,255,0.55); white-space:nowrap; display:none;">🎣 Log a Catch</button>
 </body>
 </html>
