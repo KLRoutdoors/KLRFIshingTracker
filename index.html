@@ -2365,20 +2365,20 @@ async function loadGroupFeed() {
             ${member?.display_name || 'Member'}
           </span>
         </div>
-        ${dateStr ? `<div style="font-size:0.82rem; color:var(--muted); margin-bottom:8px;">📅 ${dateStr} at ${timeStr}${c.location ? ' · 📍 ' + c.location : ''}</div>` : ''}
+        ${dateStr ? `<div style="font-size:0.82rem; color:var(--muted); margin-bottom:8px;">📅 ${dateStr} at ${timeStr}${(show('location') && c.location) ? ' · 📍 ' + c.location : ''}</div>` : ''}
         <div class="catch-meta" style="margin-bottom:8px;">
-          ${c.length ? `<span class="chip highlight">📏 ${c.length} in</span>` : ''}
-          ${c.weight ? `<span class="chip green">⚖️ ${c.weight} lbs</span>` : ''}
-          ${c.lureName || c.lureType ? `<span class="chip">🎣 ${c.lureName || c.lureType}</span>` : ''}
+          ${(show('length') && c.length) ? `<span class="chip highlight">📏 ${c.length} in</span>` : ''}
+          ${(show('weight') && c.weight) ? `<span class="chip green">⚖️ ${c.weight} lbs</span>` : ''}
+          ${(show('lureName') && (c.lureName || c.lureType)) ? `<span class="chip">🎣 ${c.lureName || c.lureType}</span>` : ''}
           ${(show('rod') && c.rod) ? `<span class="chip">🎿 ${c.rod}</span>` : ''}
           ${(show('reel') && c.reel) ? `<span class="chip">🔄 ${c.reel}</span>` : ''}
           ${(show('line') && c.line) ? `<span class="chip">🪢 ${c.line}</span>` : ''}
-          ${c.depth ? `<span class="chip">↕️ ${c.depth}ft</span>` : ''}
-          ${c.conditions ? `<span class="chip">🌤 ${c.conditions}</span>` : ''}
-          ${c.airTemp ? `<span class="chip">🌡 ${c.airTemp}°F</span>` : ''}
+          ${(show('depth') && c.depth) ? `<span class="chip">↕️ ${c.depth}ft</span>` : ''}
+          ${(show('conditions') && c.conditions) ? `<span class="chip">🌤 ${c.conditions}</span>` : ''}
+          ${(show('airTemp') && c.airTemp) ? `<span class="chip">🌡 ${c.airTemp}°F</span>` : ''}
           ${(show('waterTemp') && c.waterTemp) ? `<span class="chip">💧 ${c.waterTemp}°F</span>` : ''}
           ${(show('wind') && c.wind) ? `<span class="chip">💨 ${c.wind}</span>` : ''}
-          ${c.moon ? `<span class="chip">🌙 ${c.moon}</span>` : ''}
+          ${(show('moon') && c.moon) ? `<span class="chip">🌙 ${c.moon}</span>` : ''}
         </div>
         ${(show('spot') && c.spot) ? `<div style="font-size:0.82rem; color:var(--muted); margin-bottom:6px;">📌 ${c.spot}</div>` : ''}
         ${(show('notes') && c.notes) ? `<div style="font-size:0.82rem; color:var(--muted); font-style:italic; margin-bottom:8px;">${c.notes}</div>` : ''}
