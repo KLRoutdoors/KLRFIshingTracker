@@ -866,6 +866,10 @@
     <div id="group-detail" style="display:none;">
       <div style="display:flex; align-items:center; gap:10px; margin-bottom:20px;">
         <button onclick="closeGroupDetail()" style="background:transparent; border:1px solid var(--border); color:var(--muted); border-radius:8px; padding:6px 12px; cursor:pointer; font-size:0.85rem;">← Back</button>
+        <div id="group-avatar-wrap" onclick="openGroupAvatarPicker()" style="width:44px; height:44px; border-radius:50%; background:var(--surface2); border:2px solid var(--border); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; overflow:hidden;" title="Change group photo">
+          <span id="group-avatar-emoji" style="font-size:1.4rem;">👥</span>
+          <img id="group-avatar-img" style="display:none; width:100%; height:100%; object-fit:cover;">
+        </div>
         <h2 id="group-detail-name" style="font-size:1.2rem; font-weight:700; flex:1;"></h2>
         <button class="btn btn-sm" style="background:transparent; border:1px solid var(--danger); color:var(--danger);" onclick="leaveCurrentGroup()">Leave Group</button>
       </div>
@@ -1007,6 +1011,14 @@
 <div id="create-group-modal" style="display:none; position:fixed; inset:0; z-index:2000; background:rgba(0,0,0,0.75); align-items:center; justify-content:center; padding:20px;">
   <div style="background:var(--surface); border:1px solid var(--border); border-radius:16px; width:100%; max-width:420px; padding:24px;">
     <h3 style="margin-bottom:16px; font-size:1.1rem;">Create a Group</h3>
+    <div class="form-group" style="text-align:center; margin-bottom:16px;">
+      <div onclick="triggerGroupAvatarUpload('new')" id="new-group-avatar-wrap" style="width:72px; height:72px; border-radius:50%; background:var(--surface2); border:2px dashed var(--border); display:inline-flex; align-items:center; justify-content:center; cursor:pointer; overflow:hidden;" title="Add group photo">
+        <span id="new-group-avatar-emoji" style="font-size:2rem;">👥</span>
+        <img id="new-group-avatar-img" style="display:none; width:100%; height:100%; object-fit:cover;">
+      </div>
+      <div style="font-size:0.75rem; color:var(--muted); margin-top:6px;">Tap to add group photo</div>
+      <input type="file" id="new-group-avatar-input" accept="image/*" style="display:none;" onchange="previewGroupAvatar(event, 'new')">
+    </div>
     <div class="form-group">
       <label>Group Name</label>
       <input type="text" id="new-group-name" placeholder="e.g. Jardine Family" onkeydown="if(event.key==='Enter') submitCreateGroup()">
@@ -1167,6 +1179,31 @@
     </div>
     <div id="sa-loc-warn" style="display:none; background:rgba(255,179,71,0.12); border:1px solid var(--warn); border-radius:10px; padding:12px 14px; font-size:0.82rem; color:var(--warn); margin-bottom:14px;">⚠️ Sharing location will reveal your fishing spots to everyone in the group. Make sure you're happy sharing them before proceeding.</div>
     <button class="btn btn-primary" style="width:100%;" onclick="submitShareAllCatches()">📤 Share All Catches</button>
+  </div>
+</div>
+
+<!-- GROUP AVATAR PICKER MODAL -->
+<div id="group-avatar-modal" style="display:none; position:fixed; inset:0; z-index:3000; background:rgba(0,0,0,0.8); align-items:center; justify-content:center; padding:20px;">
+  <div style="background:var(--surface); border:1px solid var(--border); border-radius:16px; width:100%; max-width:400px; padding:24px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+      <h3 style="font-size:1.1rem; font-weight:700;">Group Photo</h3>
+      <button onclick="document.getElementById('group-avatar-modal').style.display='none'" style="background:none; border:none; color:var(--muted); font-size:1.4rem; cursor:pointer;">✕</button>
+    </div>
+    <div style="text-align:center; margin-bottom:20px;">
+      <div id="avatar-preview-wrap" style="width:90px; height:90px; border-radius:50%; background:var(--surface2); border:2px solid var(--border); display:inline-flex; align-items:center; justify-content:center; overflow:hidden; margin-bottom:12px;">
+        <span id="avatar-preview-emoji" style="font-size:2.5rem;">👥</span>
+        <img id="avatar-preview-img" style="display:none; width:100%; height:100%; object-fit:cover;">
+      </div>
+    </div>
+    <input type="file" id="group-avatar-file" accept="image/*" style="display:none;" onchange="previewGroupAvatarModal(event)">
+    <button class="btn btn-primary" style="width:100%; margin-bottom:10px;" onclick="document.getElementById('group-avatar-file').click()">📷 Upload Photo</button>
+    <div style="font-size:0.8rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:10px; text-align:center;">Or choose an emoji</div>
+    <div style="display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-bottom:20px;">
+      ${['🎣','🐟','🐠','🎿','🌊','🏕️','🦅','⚡','🔥','🌙','🏆','🎯','🦈','🐬','🦋'].map(e => 
+        `<button onclick="selectGroupEmoji('${e}')" style="width:44px; height:44px; border-radius:50%; background:var(--surface2); border:1px solid var(--border); font-size:1.4rem; cursor:pointer;">${e}</button>`
+      ).join('')}
+    </div>
+    <button class="btn btn-primary" style="width:100%;" onclick="saveGroupAvatar()">Save</button>
   </div>
 </div>
 
@@ -2318,7 +2355,9 @@ async function renderGroups() {
   el.innerHTML = myGroups.map(g => {
     const memberCount = g.group_members?.length || 0;
     return `<div class="catch-card" style="cursor:pointer; margin-bottom:10px;" onclick="openGroupDetail('${g.id}')">
-      <div class="catch-photo" style="font-size:1.5rem;">👥</div>
+      <div class="catch-photo" style="font-size:1.5rem; overflow:hidden;">
+        ${g.avatar ? `<img src="${g.avatar}" style="width:100%; height:100%; object-fit:cover;">` : '👥'}
+      </div>
       <div class="catch-info">
         <h4>${g.name}</h4>
         <div style="font-size:0.82rem; color:var(--muted);">${memberCount} member${memberCount !== 1 ? 's' : ''}</div>
@@ -2340,6 +2379,7 @@ async function openGroupDetail(groupId) {
   document.getElementById('group-detail').style.display = 'block';
   document.getElementById('group-detail-name').textContent = group.name;
   document.getElementById('group-invite-code').textContent = group.invite_code;
+  updateGroupAvatarUI(group.avatar || '👥');
 
   // Load members
   const { data: members } = await sb.from('group_members').select('*').eq('group_id', groupId);
@@ -2634,7 +2674,8 @@ async function submitCreateGroup() {
   const display = document.getElementById('new-group-display').value.trim();
   if (!name || !display) { showToast('Enter a group name and your display name', true); return; }
 
-  const { data: group, error } = await sb.from('groups').insert({ name, created_by: currentUser.id }).select().single();
+  const avatar = pendingGroupAvatarIsNew || null;
+  const { data: group, error } = await sb.from('groups').insert({ name, created_by: currentUser.id, avatar }).select().single();
   if (error) { showToast('Error: ' + error.message, true); return; }
 
   const { error: memberError } = await sb.from('group_members').insert({ group_id: group.id, user_id: currentUser.id, display_name: display });
@@ -3692,6 +3733,95 @@ function renderSolunar() {
     return;
   }
   doRenderSolunar();
+}
+
+let pendingGroupAvatar = null;
+let pendingGroupAvatarIsNew = false;
+
+function triggerGroupAvatarUpload(context) {
+  document.getElementById('new-group-avatar-input').click();
+}
+
+function previewGroupAvatar(e, context) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const src = ev.target.result;
+    document.getElementById('new-group-avatar-emoji').style.display = 'none';
+    const img = document.getElementById('new-group-avatar-img');
+    img.src = src; img.style.display = 'block';
+    pendingGroupAvatarIsNew = src;
+  };
+  reader.readAsDataURL(file);
+}
+
+function openGroupAvatarPicker() {
+  if (!currentGroup || currentGroup.created_by !== currentUser.id) {
+    showToast('Only the group creator can change the photo', true);
+    return;
+  }
+  pendingGroupAvatar = currentGroup.avatar || null;
+  // Show current avatar in preview
+  const emojiEl = document.getElementById('avatar-preview-emoji');
+  const imgEl = document.getElementById('avatar-preview-img');
+  if (currentGroup.avatar?.startsWith('data:') || currentGroup.avatar?.startsWith('http')) {
+    emojiEl.style.display = 'none';
+    imgEl.src = currentGroup.avatar; imgEl.style.display = 'block';
+  } else {
+    emojiEl.textContent = currentGroup.avatar || '👥';
+    emojiEl.style.display = 'flex'; imgEl.style.display = 'none';
+  }
+  document.getElementById('group-avatar-modal').style.display = 'flex';
+}
+
+function previewGroupAvatarModal(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    pendingGroupAvatar = ev.target.result;
+    document.getElementById('avatar-preview-emoji').style.display = 'none';
+    const img = document.getElementById('avatar-preview-img');
+    img.src = pendingGroupAvatar; img.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+function selectGroupEmoji(emoji) {
+  pendingGroupAvatar = emoji;
+  document.getElementById('avatar-preview-img').style.display = 'none';
+  const emojiEl = document.getElementById('avatar-preview-emoji');
+  emojiEl.textContent = emoji; emojiEl.style.display = 'flex';
+}
+
+async function saveGroupAvatar() {
+  if (!currentGroup || !pendingGroupAvatar) return;
+  try {
+    await sb.from('groups').update({ avatar: pendingGroupAvatar }).eq('id', currentGroup.id);
+    currentGroup.avatar = pendingGroupAvatar;
+    // Update UI
+    updateGroupAvatarUI(pendingGroupAvatar);
+    document.getElementById('group-avatar-modal').style.display = 'none';
+    showToast('✅ Group photo updated!');
+    renderGroups();
+  } catch(e) {
+    showToast('Error saving: ' + e.message, true);
+  }
+}
+
+function updateGroupAvatarUI(avatar) {
+  const wrap = document.getElementById('group-avatar-wrap');
+  const emoji = document.getElementById('group-avatar-emoji');
+  const img = document.getElementById('group-avatar-img');
+  if (!avatar) return;
+  if (avatar.startsWith('data:') || avatar.startsWith('http')) {
+    emoji.style.display = 'none';
+    img.src = avatar; img.style.display = 'block';
+  } else {
+    img.style.display = 'none';
+    emoji.textContent = avatar; emoji.style.display = 'flex';
+  }
 }
 
 function refreshSolunar() {
