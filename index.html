@@ -2977,7 +2977,20 @@ function renderSolunarDay(date, lat, lng, isToday) {
 
 function renderSolunar() {
   if (!solunarLat) {
-    refreshSolunar();
+    // Show immediately with Twin Falls default while GPS loads
+    solunarLat = 42.5630;
+    solunarLng = -114.4609;
+    document.getElementById('solunar-location-label').textContent = '📍 Getting your location…';
+    doRenderSolunar();
+    // Then try to get real GPS in background
+    navigator.geolocation.getCurrentPosition(pos => {
+      solunarLat = pos.coords.latitude;
+      solunarLng = pos.coords.longitude;
+      document.getElementById('solunar-location-label').textContent = `📍 ${solunarLat.toFixed(2)}°, ${solunarLng.toFixed(2)}°`;
+      doRenderSolunar();
+    }, () => {
+      document.getElementById('solunar-location-label').textContent = '📍 Twin Falls, ID (default)';
+    });
     return;
   }
   doRenderSolunar();
