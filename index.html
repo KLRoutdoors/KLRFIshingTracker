@@ -1093,13 +1093,23 @@
 
   <!-- BRAG BOARD PAGE -->
   <div id="page-board" class="page">
-    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
-      <div>
-        <h2 style="font-size:1.3rem; font-weight:700;">Bragging Board</h2>
-        <p style="color:var(--muted); font-size:0.85rem; margin-top:3px;">Top catches from all anglers</p>
+    <div style="margin-bottom:16px;">
+      <h2 style="font-size:1.3rem; font-weight:700; margin-bottom:4px;">Bragging Board</h2>
+      <p style="color:var(--muted); font-size:0.85rem; margin-bottom:12px;">Top catches from all anglers</p>
+      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+        <input type="text" id="board-search" placeholder="Search name or species…" oninput="filterBoard()"
+          style="flex:1; min-width:180px; background:var(--bg); border:1px solid var(--border); border-radius:8px; color:var(--text); padding:9px 12px; font-size:0.9rem; outline:none;">
+        <select id="board-sort" onchange="filterBoard()"
+          style="background:var(--bg); border:1px solid var(--border); border-radius:8px; color:var(--text); padding:9px 12px; font-size:0.875rem; outline:none;">
+          <option value="recent">Most Recent</option>
+          <option value="heaviest">Heaviest Fish</option>
+          <option value="longest">Longest Fish</option>
+          <option value="species">Species A–Z</option>
+          <option value="name">Angler A–Z</option>
+        </select>
       </div>
     </div>
-    <div id="board-grid" style="display:grid; gap:14px;"></div>
+    <div id="board-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:14px;"></div>
   </div>
 
 <!-- POST TO BOARD MODAL -->
@@ -2687,6 +2697,86 @@ async function renderBoard() {
     </div>`;
   }).join('');
   } catch(e) { console.error('Board render error:', e); grid.innerHTML = '<div class="empty-state"><p>Render error: ' + e.message + '</p></div>'; }
+}
+
+let allBoardPosts = [];
+let allLikeCounts = {};
+let allCommentCounts = {};
+let allMyLikes = new Set();
+
+function filterBoard() {
+  const q = (document.getElementById('board-search')?.value || '').toLowerCase();
+  const sort = document.getElementById('board-sort')?.value || 'recent';
+  const grid = document.getElementById('board-grid');
+  if (!grid) return;
+
+  let filtered = [...allBoardPosts];
+
+  // Search filter
+  if (q) {
+    filtered = filtered.filter(post => {
+      const c = post.data;
+      return (c.species || '').toLowerCase().includes(q) ||
+             (post.display_name || '').toLowerCase().includes(q);
+    });
+  }
+
+  // Sort
+  filtered.sort((a, b) => {
+    if (sort === 'recent') return new Date(b.created_at) - new Date(a.created_at);
+    if (sort === 'heaviest') return (b.data?.weight || 0) - (a.data?.weight || 0);
+    if (sort === 'longest') return (b.data?.length || 0) - (a.data?.length || 0);
+    if (sort === 'species') return (a.data?.species || '').localeCompare(b.data?.species || '');
+    if (sort === 'name') return (a.display_name || '').localeCompare(b.display_name || '');
+    return 0;
+  });
+
+  if (!filtered.length) {
+    grid.innerHTML = '<div class="empty-state"><div class="icon">🔍</div><p>No catches match your search.</p></div>';
+    return;
+  }
+
+  grid.innerHTML = filtered.map(post => renderBoardPost(post, allLikeCounts, allCommentCounts, allMyLikes)).join('');
+}
+
+function renderBoardPost(post, likeCounts, commentCounts, myLikes) {
+  const c = post.data;
+  const isMe = post.user_id === currentUser.id;
+  const liked = myLikes.has(post.id);
+  const likeCount = likeCounts[post.id] || 0;
+  const commentCount = commentCounts[post.id] || 0;
+  const date = post.created_at ? new Date(post.created_at).toLocaleDateString('en-US', { day:'numeric', month:'short', year:'numeric' }) : '';
+  return `<div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; position:relative;">
+    ${isMe ? `<button onclick="deleteFromBoard('${post.id}')" style="position:absolute; top:8px; right:8px; background:rgba(15,25,35,0.8); border:none; color:var(--muted); font-size:0.8rem; cursor:pointer; width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; z-index:2;" title="Remove">🗑</button>` : ''}
+    ${c.photo ? `<img src="${c.photo}" onclick="openPhoto(this.src)" style="width:100%; max-height:400px; object-fit:contain; background:#0f1923; cursor:zoom-in; display:block;">` : ''}
+    <div style="padding:14px 16px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+        <h3 style="font-size:1.1rem; font-weight:800; color:var(--text);">${c.species}</h3>
+        <div style="font-size:0.78rem; color:var(--muted);">Posted by <span style="color:var(--accent); font-weight:600;">${post.display_name || 'Angler'}</span></div>
+      </div>
+      <div class="catch-meta" style="margin-bottom:8px;">
+        ${c.length ? `<span class="chip highlight">📏 ${c.length} in</span>` : ''}
+        ${c.weight ? `<span class="chip green">⚖️ ${c.weight} lbs</span>` : ''}
+        ${c.lureName || c.lureType ? `<span class="chip">🎣 ${c.lureName || c.lureType}</span>` : ''}
+        ${c.rod ? `<span class="chip">🎿 ${c.rod}</span>` : ''}
+        ${c.location ? `<span class="chip">📍 ${c.location}</span>` : ''}
+        ${c.datetime ? `<span class="chip">📅 ${new Date(c.datetime).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span>` : ''}
+        ${c.conditions ? `<span class="chip">🌤 ${c.conditions}</span>` : ''}
+      </div>
+      ${c.notes ? `<div style="font-size:0.82rem; color:var(--muted); font-style:italic; margin-bottom:8px;">${c.notes}</div>` : ''}
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-top:10px; padding-top:10px; border-top:1px solid var(--border);">
+        <div style="display:flex; gap:12px;">
+          <button onclick="toggleLike('${post.id}', ${liked})" style="background:transparent; border:none; cursor:pointer; display:flex; align-items:center; gap:5px; font-size:0.9rem; color:${liked ? '#ff5c5c' : 'var(--muted)'}; padding:0;">
+            ${liked ? '❤️' : '🤍'} <span style="font-weight:600;">${likeCount}</span>
+          </button>
+          <button onclick="openComments('${post.id}')" style="background:transparent; border:none; cursor:pointer; display:flex; align-items:center; gap:5px; font-size:0.9rem; color:var(--muted); padding:0;">
+            💬 <span style="font-weight:600;">${commentCount}</span>
+          </button>
+        </div>
+        <div style="font-size:0.75rem; color:var(--border);">${date}</div>
+      </div>
+    </div>
+  </div>`;
 }
 
 function toggleLocationWarning(checkbox) {
