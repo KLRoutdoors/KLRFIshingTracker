@@ -3466,7 +3466,7 @@ function getSeasonalBonus(date) {
   // Fish are more active in spring/fall feeding periods
   const month = date.getMonth(); // 0=Jan
   // Peak: Mar-May (pre-spawn), Sep-Nov (fall feeding)
-  const seasonal = [0.85, 0.88, 0.95, 1.0, 0.98, 0.88, 0.82, 0.85, 0.95, 1.0, 0.97, 0.88];
+  const seasonal = [0.78, 0.82, 0.95, 1.0, 0.97, 0.84, 0.76, 0.80, 0.95, 1.0, 0.96, 0.82];
   return seasonal[month];
 }
 
@@ -3524,34 +3524,40 @@ function calcSolunarHourly(date, lat, lng) {
   });
 
   // ── DAY RATING — 6-factor score ───────────────────────────────────────────
-  // 1. MOON PHASE (25%) — exact new/full moon bonus included
-  const phaseScore = phaseInfo.phaseMultiplier * 25;
+  // 1. MOON PHASE (20%) — reduced so daylight dominates variation
+  const phaseScore = phaseInfo.phaseMultiplier * 20;
 
   // 2. MOON DISTANCE (15%) — perigee is significantly better
   const distScore = phaseInfo.distBonus * 15;
 
-  // 3. DAYLIGHT OVERLAP (30%) — most important practical factor
+  // 3. DAYLIGHT OVERLAP (35%) — THE most important factor, causes big day-to-day swings
+  // Major peaks in daylight = full score. At night = near zero. This is what causes
+  // 85% one day dropping to 20% two days later as peaks shift through the night.
   let daylightScore = 0;
   if (sun) {
     const allPeaks = [
-      { t: moon.overhead, weight: 10 },
-      { t: moon.underfoot, weight: 9 },
-      { t: moon.rise, weight: 5 },
-      { t: moon.set, weight: 5 },
+      { t: moon.overhead, weight: 14, isMajor: true },
+      { t: moon.underfoot, weight: 12, isMajor: true },
+      { t: moon.rise, weight: 5, isMajor: false },
+      { t: moon.set, weight: 4, isMajor: false },
     ].filter(p => p.t !== null);
+
     allPeaks.forEach(p => {
-      if (isDaylight(p.t, sun)) {
+      const inDay = isDaylight(p.t, sun);
+      if (inDay) {
         daylightScore += p.weight;
       } else {
+        // Twilight window (within 45 min of sunrise/sunset) = 30% credit
         const tillRise = Math.min(hoursTill(p.t, sun.rise), hoursTill(sun.rise, p.t));
         const tillSet = Math.min(hoursTill(p.t, sun.set), hoursTill(sun.set, p.t));
         const nearLight = Math.min(tillRise, tillSet);
-        if (nearLight < 2) daylightScore += p.weight * (1 - nearLight / 2) * 0.6;
+        if (nearLight < 0.75) daylightScore += p.weight * (1 - nearLight / 0.75) * 0.3;
+        // Deep night = 0 credit (not even partial)
       }
     });
     const maxPossible = allPeaks.reduce((a,b) => a + b.weight, 0);
-    daylightScore = (daylightScore / maxPossible) * 30;
-  } else { daylightScore = 15; }
+    daylightScore = (daylightScore / maxPossible) * 35;
+  } else { daylightScore = 17; }
 
   // 4. PEAK OVERLAP / STACKING (12%) — multiple peaks close together compound
   let overlapScore = 0;
@@ -3582,7 +3588,7 @@ function calcSolunarHourly(date, lat, lng) {
   else if (isFullOrNew) rating = Math.min(92, rating + 4);
   else if (isPerigee) rating = Math.min(88, rating + 3);
 
-  rating = Math.min(97, Math.max(6, rating));
+  rating = Math.min(97, Math.max(4, rating));
 
   return { hours, major, minor, sun, moon, phaseInfo, dayRating: rating };
 }
