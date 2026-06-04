@@ -2624,11 +2624,14 @@ async function renderBoard() {
   const grid = document.getElementById('board-grid');
   grid.innerHTML = '<div style="color:var(--muted); text-align:center; padding:30px;">Loading…</div>';
 
-  const [{ data, error }, { data: likesData }, { data: commentsData }] = await Promise.all([
+  const [boardResult, likesResult, commentsResult] = await Promise.all([
     sb.from('brag_board').select('*').order('created_at', { ascending: false }),
-    sb.from('brag_likes').select('post_id, user_id'),
-    sb.from('brag_comments').select('post_id')
+    sb.from('brag_likes').select('post_id, user_id').then(r => r).catch(() => ({ data: [] })),
+    sb.from('brag_comments').select('post_id').then(r => r).catch(() => ({ data: [] }))
   ]);
+  const { data, error } = boardResult;
+  const likesData = likesResult.data || [];
+  const commentsData = commentsResult.data || [];
 
   if (error) { grid.innerHTML = '<div class="empty-state"><p>Could not load board.</p></div>'; return; }
   if (!data?.length) { grid.innerHTML = '<div class="empty-state"><div class="icon">🏆</div><p>No catches posted yet — be the first!</p></div>'; return; }
