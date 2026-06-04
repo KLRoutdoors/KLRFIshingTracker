@@ -905,7 +905,36 @@
 
     <!-- Location header -->
     <div style="text-align:center; padding:16px 16px 8px;">
-      <div id="solunar-location-label" style="font-size:1rem; font-weight:600; color:rgba(255,255,255,0.9); letter-spacing:0.05em;">📍 Getting location…</div>
+      <div id="solunar-location-label" onclick="openSolunarLocationPicker()" style="font-size:1rem; font-weight:600; color:var(--accent); letter-spacing:0.05em; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">📍 Getting location… <span style="font-size:0.75rem; opacity:0.7;">✏️</span></div>
+    </div>
+
+    <!-- Location Picker Modal -->
+    <div id="solunar-loc-modal" style="display:none; position:fixed; inset:0; z-index:3000; background:rgba(0,0,0,0.8); align-items:flex-end; justify-content:center;">
+      <div style="background:var(--surface); border:1px solid var(--border); border-radius:16px 16px 0 0; width:100%; max-width:520px; padding:24px; padding-bottom:32px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+          <h3 style="font-size:1.1rem; font-weight:700;">Set Location</h3>
+          <button onclick="document.getElementById('solunar-loc-modal').style.display='none'" style="background:none; border:none; color:var(--muted); font-size:1.4rem; cursor:pointer;">✕</button>
+        </div>
+        <!-- GPS -->
+        <button onclick="solunarUseGPS()" class="btn btn-primary" style="width:100%; margin-bottom:12px; display:flex; align-items:center; justify-content:center; gap:8px;">
+          📡 Use My Current GPS Location
+        </button>
+        <!-- Search -->
+        <div style="position:relative; margin-bottom:12px;">
+          <input id="solunar-loc-search" type="text" placeholder="Search city or place (e.g. Twin Falls, ID)" 
+            style="width:100%; background:var(--bg); border:1px solid var(--border); border-radius:8px; color:var(--text); padding:11px 14px; font-size:0.95rem; outline:none;"
+            onkeydown="if(event.key==='Enter') solunarSearchLocation()">
+          <button onclick="solunarSearchLocation()" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); background:var(--accent); border:none; border-radius:6px; color:#fff; padding:5px 12px; cursor:pointer; font-size:0.85rem;">Search</button>
+        </div>
+        <div id="solunar-search-results" style="margin-bottom:12px;"></div>
+        <!-- Map pin -->
+        <button onclick="solunarOpenMapPicker()" class="btn" style="width:100%; background:var(--surface2); border:1px solid var(--border); color:var(--text);">
+          📍 Drop a Pin on Map
+        </button>
+        <div id="solunar-map-picker" style="display:none; margin-top:12px; border-radius:10px; overflow:hidden; height:220px;"></div>
+        <div id="solunar-map-coords" style="font-size:0.8rem; color:var(--muted); margin-top:6px; text-align:center;"></div>
+        <button id="solunar-map-confirm" onclick="solunarConfirmMapPin()" style="display:none; width:100%; margin-top:10px;" class="btn btn-primary">Confirm Location</button>
+      </div>
     </div>
 
     <!-- Day rating dial -->
@@ -2794,9 +2823,23 @@ function getMoonPhaseInfo(date) {
   const phase = ((date - known) % synodic + synodic) % synodic / synodic;
   const phases = ['New Moon','Waxing Crescent','First Quarter','Waxing Gibbous','Full Moon','Waning Gibbous','Last Quarter','Waning Crescent'];
   const idx = Math.floor(phase * 8) % 8;
-  const dist = Math.min(phase, 1 - phase) * 2;
-  const rating = Math.round((1 - dist * 0.4) * 100);
-  return { name: phases[idx], phase, rating };
+  // New/Full moon = 1.0, quarters = 0.5, in between scales smoothly
+  const dist = Math.min(phase, 1 - phase) * 2; // 0=new/full, 1=quarter
+  const phaseMultiplier = 0.5 + 0.5 * Math.cos(dist * Math.PI); // 1.0 at new/full, 0.5 at quarter
+  return { name: phases[idx], phase, phaseMultiplier };
+}
+
+function isDaylight(h, sun) {
+  if (!sun) return false;
+  const rise = sun.rise, set = sun.set;
+  if (set > rise) return h >= rise && h <= set;
+  return h >= rise || h <= set; // crosses midnight
+}
+
+function hoursTill(target, from) {
+  let d = target - from;
+  if (d < 0) d += 24;
+  return d;
 }
 
 function calcSolunarHourly(date, lat, lng) {
@@ -2804,38 +2847,92 @@ function calcSolunarHourly(date, lat, lng) {
   const sun = getSunTimes(date, lat, lng);
   const phaseInfo = getMoonPhaseInfo(date);
 
-  // Build activity curve — dramatic peaks, low valleys
+  const major = [
+    { start: (moon.overhead - 1 + 24) % 24, end: (moon.overhead + 1) % 24, peak: moon.overhead, type: 'overhead' },
+    { start: (moon.underfoot - 1 + 24) % 24, end: (moon.underfoot + 1) % 24, peak: moon.underfoot, type: 'underfoot' },
+  ];
+  const minor = [];
+  if (moon.rise !== null) minor.push({ start: (moon.rise - 0.5 + 24) % 24, end: (moon.rise + 0.5) % 24, peak: moon.rise });
+  if (moon.set !== null) minor.push({ start: (moon.set - 0.5 + 24) % 24, end: (moon.set + 0.5) % 24, peak: moon.set });
+
+  // ── HOURLY ACTIVITY CURVE ──────────────────────────────────────────────────
   const hours = Array(24).fill(0).map((_, h) => {
-    let score = 6; // low baseline for dramatic contrast
+    let score = 4;
     const peaks = [
-      { t: moon.overhead, strength: 94, width: 1.8 },
-      { t: moon.underfoot, strength: 94, width: 1.8 },
-      { t: moon.rise, strength: 58, width: 1.3 },
-      { t: moon.set, strength: 58, width: 1.3 },
+      { t: moon.overhead, strength: 100, width: 1.8 },
+      { t: moon.underfoot, strength: 92, width: 1.8 },  // underfoot slightly weaker
+      { t: moon.rise, strength: 55, width: 1.2 },
+      { t: moon.set, strength: 55, width: 1.2 },
     ].filter(p => p.t !== null);
     if (sun) {
-      peaks.push({ t: sun.rise, strength: 32, width: 1.0 });
-      peaks.push({ t: sun.set, strength: 32, width: 1.0 });
+      peaks.push({ t: sun.rise, strength: 28, width: 0.9 });
+      peaks.push({ t: sun.set, strength: 28, width: 0.9 });
     }
     peaks.forEach(p => {
       let diff = Math.abs(h - p.t);
       if (diff > 12) diff = 24 - diff;
       score += p.strength * Math.exp(-(diff * diff) / (2 * p.width * p.width));
     });
-    return Math.min(100, Math.max(4, Math.round(score * (phaseInfo.rating / 100))));
+    return Math.min(100, Math.max(3, Math.round(score * phaseInfo.phaseMultiplier)));
   });
 
-  const major = [
-    { start: (moon.overhead - 1 + 24) % 24, end: (moon.overhead + 1) % 24 },
-    { start: (moon.underfoot - 1 + 24) % 24, end: (moon.underfoot + 1) % 24 },
-  ];
-  const minor = [];
-  if (moon.rise !== null) minor.push({ start: (moon.rise - 0.5 + 24) % 24, end: (moon.rise + 0.5) % 24 });
-  if (moon.set !== null) minor.push({ start: (moon.set - 0.5 + 24) % 24, end: (moon.set + 0.5) % 24 });
+  // ── DAY RATING — multi-factor score ───────────────────────────────────────
+  let rating = 0;
 
-  const dayRating = Math.round(phaseInfo.rating * (hours.reduce((a,b) => a+b, 0) / (hours.length * 100)));
+  // 1. MOON PHASE (30% of score) — new/full moon = 30, quarter = 15
+  const phaseScore = phaseInfo.phaseMultiplier * 30;
 
-  return { hours, major, minor, sun, moon, phaseInfo, dayRating: Math.min(100, Math.max(10, dayRating)) };
+  // 2. DAYLIGHT OVERLAP (35% of score) — peaks during daylight are far more valuable
+  let daylightScore = 0;
+  if (sun) {
+    const dayLen = ((sun.set - sun.rise + 24) % 24);
+    const allPeaks = [
+      { t: moon.overhead, weight: 10 },
+      { t: moon.underfoot, weight: 9 },
+      { t: moon.rise, weight: 5 },
+      { t: moon.set, weight: 5 },
+    ].filter(p => p.t !== null);
+
+    allPeaks.forEach(p => {
+      if (isDaylight(p.t, sun)) {
+        daylightScore += p.weight;
+      } else {
+        // Partial credit if within 1.5 hrs of dawn/dusk
+        const tillRise = Math.min(hoursTill(p.t, sun.rise), hoursTill(sun.rise, p.t));
+        const tillSet = Math.min(hoursTill(p.t, sun.set), hoursTill(sun.set, p.t));
+        const nearLight = Math.min(tillRise, tillSet);
+        if (nearLight < 1.5) daylightScore += p.weight * (1 - nearLight / 1.5) * 0.5;
+      }
+    });
+    // Normalize to 35 max
+    const maxPossible = allPeaks.reduce((a,b) => a + b.weight, 0);
+    daylightScore = (daylightScore / maxPossible) * 35;
+  } else {
+    daylightScore = 17; // no sun data, give average
+  }
+
+  // 3. PEAK OVERLAP BONUS (15% of score) — when major & minor are close, activity compounds
+  let overlapScore = 0;
+  const allPeakTimes = [moon.overhead, moon.underfoot, moon.rise, moon.set].filter(t => t !== null);
+  if (sun) { allPeakTimes.push(sun.rise, sun.set); }
+  allPeakTimes.forEach((t1, i) => {
+    allPeakTimes.slice(i + 1).forEach(t2 => {
+      let diff = Math.abs(t1 - t2);
+      if (diff > 12) diff = 24 - diff;
+      if (diff < 2) overlapScore += (1 - diff / 2) * 15;
+    });
+  });
+  overlapScore = Math.min(15, overlapScore);
+
+  // 4. PEAK QUALITY (20% of score) — how many strong peaks today has
+  const peakQualityScore = Math.min(20,
+    (allPeakTimes.length / 6) * 20 * phaseInfo.phaseMultiplier
+  );
+
+  rating = Math.round(phaseScore + daylightScore + overlapScore + peakQualityScore);
+  rating = Math.min(98, Math.max(8, rating));
+
+  return { hours, major, minor, sun, moon, phaseInfo, dayRating: rating };
 }
 
 function formatHour(h) {
@@ -3167,8 +3264,111 @@ function renderSolunar() {
 }
 
 function refreshSolunar() {
-  solunarLat = null;
-  renderSolunar();
+  openSolunarLocationPicker();
+}
+
+function openSolunarLocationPicker() {
+  document.getElementById('solunar-loc-modal').style.display = 'flex';
+  document.getElementById('solunar-search-results').innerHTML = '';
+  document.getElementById('solunar-loc-search').value = '';
+  document.getElementById('solunar-map-picker').style.display = 'none';
+  document.getElementById('solunar-map-confirm').style.display = 'none';
+  document.getElementById('solunar-map-coords').textContent = '';
+}
+
+function solunarUseGPS() {
+  document.getElementById('solunar-location-label').textContent = '📍 Getting GPS…';
+  document.getElementById('solunar-loc-modal').style.display = 'none';
+  navigator.geolocation.getCurrentPosition(pos => {
+    solunarLat = pos.coords.latitude;
+    solunarLng = pos.coords.longitude;
+    reverseGeocode(solunarLat, solunarLng);
+    doRenderSolunar();
+  }, () => {
+    showToast('Could not get GPS location', true);
+    document.getElementById('solunar-location-label').textContent = '📍 GPS unavailable — tap to set location';
+  });
+}
+
+async function solunarSearchLocation() {
+  const q = document.getElementById('solunar-loc-search').value.trim();
+  if (!q) return;
+  const resultsEl = document.getElementById('solunar-search-results');
+  resultsEl.innerHTML = '<div style="color:var(--muted); font-size:0.85rem; padding:8px 0;">Searching…</div>';
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5`);
+    const data = await res.json();
+    if (!data.length) {
+      resultsEl.innerHTML = '<div style="color:var(--muted); font-size:0.85rem; padding:8px 0;">No results found</div>';
+      return;
+    }
+    resultsEl.innerHTML = data.map((r, i) => `
+      <div onclick="solunarSelectResult(${r.lat}, ${r.lon}, '${r.display_name.replace(/'/g,"\'").substring(0,50)}')" 
+           style="padding:10px 12px; background:var(--surface2); border-radius:8px; cursor:pointer; margin-bottom:6px; font-size:0.875rem; color:var(--text);">
+        📍 ${r.display_name.substring(0, 60)}${r.display_name.length > 60 ? '…' : ''}
+      </div>`).join('');
+  } catch(e) {
+    resultsEl.innerHTML = '<div style="color:var(--danger); font-size:0.85rem; padding:8px 0;">Search failed — check connection</div>';
+  }
+}
+
+function solunarSelectResult(lat, lng, name) {
+  solunarLat = parseFloat(lat);
+  solunarLng = parseFloat(lng);
+  document.getElementById('solunar-location-label').innerHTML = `📍 ${name} <span style="font-size:0.75rem; opacity:0.7;">✏️</span>`;
+  document.getElementById('solunar-loc-modal').style.display = 'none';
+  doRenderSolunar();
+}
+
+async function reverseGeocode(lat, lng) {
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+    const data = await res.json();
+    const city = data.address?.city || data.address?.town || data.address?.village || data.address?.county || '';
+    const state = data.address?.state || '';
+    const label = city ? `${city}${state ? ', ' + state : ''}` : `${lat.toFixed(2)}°N, ${Math.abs(lng).toFixed(2)}°W`;
+    document.getElementById('solunar-location-label').innerHTML = `📍 ${label} <span style="font-size:0.75rem; opacity:0.7;">✏️</span>`;
+  } catch(e) {
+    document.getElementById('solunar-location-label').innerHTML = `📍 ${lat.toFixed(2)}°N, ${Math.abs(lng).toFixed(2)}°W <span style="font-size:0.75rem; opacity:0.7;">✏️</span>`;
+  }
+}
+
+let solunarPickerMap = null;
+let solunarPickerMarker = null;
+
+function solunarOpenMapPicker() {
+  const mapEl = document.getElementById('solunar-map-picker');
+  mapEl.style.display = 'block';
+  
+  setTimeout(() => {
+    if (!solunarPickerMap) {
+      solunarPickerMap = L.map('solunar-map-picker').setView([solunarLat || 42.56, solunarLng || -114.46], 8);
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles © Esri', maxZoom: 19
+      }).addTo(solunarPickerMap);
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+        attribution: '', maxZoom: 19, opacity: 0.8
+      }).addTo(solunarPickerMap);
+      solunarPickerMap.on('click', e => {
+        const { lat, lng } = e.latlng;
+        if (solunarPickerMarker) solunarPickerMarker.remove();
+        solunarPickerMarker = L.marker([lat, lng]).addTo(solunarPickerMap);
+        document.getElementById('solunar-map-coords').textContent = `${lat.toFixed(4)}°N, ${Math.abs(lng).toFixed(4)}°W`;
+        document.getElementById('solunar-map-confirm').style.display = 'block';
+      });
+    }
+    solunarPickerMap.invalidateSize();
+  }, 100);
+}
+
+async function solunarConfirmMapPin() {
+  if (!solunarPickerMarker) return;
+  const { lat, lng } = solunarPickerMarker.getLatLng();
+  solunarLat = lat;
+  solunarLng = lng;
+  document.getElementById('solunar-loc-modal').style.display = 'none';
+  await reverseGeocode(lat, lng);
+  doRenderSolunar();
 }
 
 window.addEventListener('resize', () => {
