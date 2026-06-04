@@ -3005,12 +3005,17 @@ function animateBars(targetHeights, major, minor) {
 function drawActivityBars(hours, major, minor) {
   const canvas = document.getElementById('solunar-bars');
   if (!canvas) return;
-  // If canvas has no size yet (hidden/not laid out), wait for layout
-  if (canvas.getBoundingClientRect().width === 0) {
-    setTimeout(() => animateBars(hours, major, minor), 100);
-  } else {
-    animateBars(hours, major, minor);
-  }
+  // Store for redraw
+  window._lastBarsData = { hours, major, minor };
+  const tryDraw = (attempt) => {
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width > 10) {
+      animateBars(hours, major, minor);
+    } else if (attempt < 10) {
+      setTimeout(() => tryDraw(attempt + 1), 80);
+    }
+  };
+  requestAnimationFrame(() => tryDraw(0));
 }
 
 let daySelectorBuilt = false;
@@ -3030,10 +3035,10 @@ function renderDaySelector() {
       const mon = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
       const day = d.getDate();
       const dow = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
-      html += `<div onclick="solunarJumpToDay(${i})" data-day="${i}" style="text-align:center; padding:4px 0; cursor:pointer; width:${itemW}px; flex-shrink:0; transition:all 0.25s ease; border-bottom:3px solid transparent;">
-        <div class="ds-mon" style="font-size:0.75rem; letter-spacing:0.05em; transition:color 0.25s;">${mon}</div>
-        <div class="ds-day" style="font-weight:400; line-height:1.15; transition:all 0.25s;">${day}</div>
-        <div class="ds-dow" style="font-size:0.75rem; letter-spacing:0.05em; transition:color 0.25s;">${dow}</div>
+      html += `<div onclick="solunarJumpToDay(${i})" data-day="${i}" style="text-align:center; padding:4px 0; cursor:pointer; width:${itemW}px; flex-shrink:0; border-bottom:3px solid transparent; height:72px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; transition:border-color 0.25s;">
+        <div class="ds-mon" style="font-size:0.7rem; letter-spacing:0.05em; transition:color 0.25s; height:14px; line-height:14px;">${mon}</div>
+        <div class="ds-day" style="font-weight:400; line-height:1; transition:color 0.25s, font-weight 0.25s; height:36px; display:flex; align-items:center; justify-content:center;">${day}</div>
+        <div class="ds-dow" style="font-size:0.7rem; letter-spacing:0.05em; transition:color 0.25s; height:14px; line-height:14px;">${dow}</div>
       </div>`;
     }
     track.innerHTML = html;
@@ -3046,7 +3051,7 @@ function renderDaySelector() {
     const isSelected = i === solunarDayOffset;
     el.style.borderBottom = isSelected ? '3px solid #fff' : '3px solid transparent';
     el.querySelector('.ds-mon').style.color = isSelected ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.4)';
-    el.querySelector('.ds-day').style.fontSize = isSelected ? '2rem' : '1.25rem';
+    el.querySelector('.ds-day').style.fontSize = isSelected ? '1.9rem' : '1.25rem';
     el.querySelector('.ds-day').style.fontWeight = isSelected ? '800' : '400';
     el.querySelector('.ds-day').style.color = isSelected ? '#fff' : 'rgba(255,255,255,0.4)';
     el.querySelector('.ds-dow').style.color = isSelected ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.35)';
@@ -3228,6 +3233,14 @@ function refreshSolunar() {
   solunarLat = null;
   renderSolunar();
 }
+
+window.addEventListener('resize', () => {
+  if (window._lastBarsData) {
+    const { hours, major, minor } = window._lastBarsData;
+    barCurrentHeights = null;
+    animateBars(hours, major, minor);
+  }
+});
 
 // ── TOAST ─────────────────────────────────────────────────────────────────────
 
