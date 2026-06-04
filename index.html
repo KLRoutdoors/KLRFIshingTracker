@@ -886,9 +886,10 @@
       </div>
 
       <!-- Group tabs -->
-      <div style="display:flex; gap:4px; margin-bottom:16px;">
+      <div style="display:flex; gap:4px; margin-bottom:16px; align-items:center; flex-wrap:wrap;">
         <button class="nav-tab active" id="gtab-feed" onclick="switchGroupTab('feed')" style="font-size:0.85rem; padding:7px 14px;">Catches</button>
         <button class="nav-tab" id="gtab-map" onclick="switchGroupTab('map')" style="font-size:0.85rem; padding:7px 14px;">Map</button>
+        <button class="btn btn-primary btn-sm" onclick="shareAllCatchesToGroup()" style="margin-left:auto; font-size:0.8rem;">📤 Share All My Catches</button>
       </div>
 
       <div id="group-feed"></div>
@@ -2532,6 +2533,40 @@ function openShareToGroup() {
     </button>`).join('');
 
   document.getElementById('share-group-modal').style.display = 'flex';
+}
+
+async function shareAllCatchesToGroup() {
+  if (!currentGroup) return;
+  if (!catches.length) { showToast('No catches to share', true); return; }
+
+  if (!confirm(`Share all ${catches.length} of your catches to ${currentGroup.name}? This will add them all to the group feed.`)) return;
+
+  const btn = event?.target;
+  if (btn) { btn.disabled = true; btn.textContent = 'Sharing…'; }
+
+  let success = 0, failed = 0;
+  for (const c of catches) {
+    try {
+      const shareData = {
+        species: c.species, id: c.id, photo: c.photo,
+        length: c.length, weight: c.weight,
+        lureName: c.lureName, lureType: c.lureType, rod: c.rod, reel: c.reel,
+        location: c.location, datetime: c.datetime,
+        conditions: c.conditions, notes: c.notes
+      };
+      await sb.from('group_catches').insert({
+        group_id: currentGroup.id,
+        catch_id: c.id || 0,
+        user_id: currentUser.id,
+        data: shareData
+      });
+      success++;
+    } catch(e) { failed++; }
+  }
+
+  if (btn) { btn.disabled = false; btn.textContent = '📤 Share All My Catches'; }
+  showToast(`👥 Shared ${success} catches to ${currentGroup.name}!${failed ? ` (${failed} failed)` : ''}`);
+  loadGroupFeed();
 }
 
 async function shareToGroup(groupId) {
