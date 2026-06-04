@@ -1089,6 +1089,8 @@
       <button class="btn btn-primary" style="width:100%;" onclick="saveSharedCatch()">💾 Save to My Catches</button>
     </div>
   </div>
+</div>
+
   <!-- BRAG BOARD PAGE -->
   <div id="page-board" class="page">
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
@@ -1099,8 +1101,6 @@
     </div>
     <div id="board-grid" style="display:grid; gap:14px;"></div>
   </div>
-
-</div>
 
 <!-- POST TO BOARD MODAL -->
 <div id="board-modal" style="display:none; position:fixed; inset:0; z-index:3000; background:rgba(0,0,0,0.75); align-items:center; justify-content:center; padding:20px; overflow-y:auto;">
@@ -2633,8 +2633,7 @@ async function renderBoard() {
   const likesData = likesResult.data || [];
   const commentsData = commentsResult.data || [];
 
-  console.log('Board data:', data, 'Error:', error);
-  if (error) { grid.innerHTML = `<div class="empty-state"><p>Error: ${JSON.stringify(error)}</p></div>`; return; }
+  if (error) { grid.innerHTML = '<div class="empty-state"><p>Could not load board.</p></div>'; return; }
   if (!data?.length) { grid.innerHTML = '<div class="empty-state"><div class="icon">🏆</div><p>No catches posted yet — be the first!</p></div>'; return; }
 
   // Build like/comment counts and my likes
