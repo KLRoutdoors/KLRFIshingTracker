@@ -554,7 +554,7 @@
       <button class="nav-tab" onclick="showPage('catches', event)">My Catches</button>
       <button class="nav-tab" onclick="showPage('patterns', event)">Patterns</button>
       <button class="nav-tab" onclick="showPage('map', event)">Map</button>
-      <button class="nav-tab" onclick="showPage('groups', event)">Groups</button>
+      <button class="nav-tab" onclick="showPage('groups', event)">Groups <span id="group-request-badge" style="display:none; background:#ff5c5c; color:#fff; border-radius:50%; font-size:0.65rem; padding:1px 5px; margin-left:3px; font-weight:700;"></span></button>
       <button class="nav-tab" onclick="showPage('board', event)">Bragging Board</button>
       <button class="nav-tab" onclick="showPage('solunar', event)">🔥 Bite Times</button>
     </nav>
@@ -873,6 +873,9 @@
         <h2 id="group-detail-name" style="font-size:1.2rem; font-weight:700; flex:1;"></h2>
         <button class="btn btn-sm" style="background:transparent; border:1px solid var(--danger); color:var(--danger);" onclick="leaveCurrentGroup()">Leave Group</button>
       </div>
+
+      <!-- Pending requests (owner only) -->
+      <div id="pending-requests-section" style="display:none; margin-bottom:16px;"></div>
 
       <!-- Invite code -->
       <div class="form-section" style="margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
@@ -1509,7 +1512,7 @@ function showPage(name, e) {
   if (name === 'catches') { renderStats(); renderCatches(); }
   if (name === 'patterns') renderPatterns();
   if (name === 'map') renderMap();
-  if (name === 'groups') renderGroups();
+  if (name === 'groups') { renderGroups(); setTimeout(checkPendingRequestBadge, 500); }
   if (name === 'board') renderBoard();
   if (name === 'solunar') { renderSolunar(); }
   const fab = document.getElementById('fab');
@@ -2367,8 +2370,8 @@ async function renderGroups() {
   el.innerHTML = myGroups.map(g => {
     const memberCount = g.group_members?.length || 0;
     return `<div class="catch-card" style="cursor:pointer; margin-bottom:10px;" onclick="openGroupDetail('${g.id}')">
-      <div class="catch-photo" style="font-size:1.5rem; overflow:hidden;">
-        ${g.avatar ? `<img src="${g.avatar}" style="width:100%; height:100%; object-fit:cover;">` : '👥'}
+      <div class="catch-photo" id="group-list-avatar-${g.id}" style="font-size:1.5rem; overflow:hidden; cursor:${g.created_by === currentUser?.id ? 'pointer' : 'default'};" onclick="event.stopPropagation(); ${g.created_by === currentUser?.id ? `openGroupAvatarPickerById('${g.id}')` : ''}">
+        ${g.avatar && (g.avatar.startsWith('data:') || g.avatar.startsWith('http')) ? `<img src="${g.avatar}" style="width:100%; height:100%; object-fit:cover;">` : `<span style="font-size:1.5rem;">${g.avatar || '👥'}</span>`}
       </div>
       <div class="catch-info">
         <h4>${g.name}</h4>
@@ -2408,6 +2411,95 @@ async function openGroupDetail(groupId) {
   }).join('');
 
   switchGroupTab('feed');
+  if (currentGroup.created_by === currentUser.id) loadPendingRequests();
+}
+
+async function loadPendingRequests() {
+  if (!currentGroup) return;
+  const { data, error } = await sb.from('group_requests')
+    .select('*')
+    .eq('group_id', currentGroup.id)
+    .eq('status', 'pending');
+
+  const section = document.getElementById('pending-requests-section');
+  if (!section) return;
+
+  if (!data?.length) { section.style.display = 'none'; return; }
+
+  section.style.display = 'block';
+  section.innerHTML = `
+    <div style="background:rgba(255,179,71,0.1); border:1px solid var(--warn); border-radius:12px; padding:16px;">
+      <div style="font-size:0.85rem; font-weight:700; color:var(--warn); margin-bottom:12px;">
+        🔔 ${data.length} Pending Join Request${data.length !== 1 ? 's' : ''}
+      </div>
+      ${data.map(r => `
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid rgba(255,179,71,0.2); gap:10px;">
+          <div>
+            <div style="font-weight:600; font-size:0.9rem;">${r.display_name}</div>
+            <div style="font-size:0.75rem; color:var(--muted);">${new Date(r.created_at).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'})}</div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-primary btn-sm" onclick="approveRequest('${r.id}', '${r.user_id}', '${r.display_name}')">✓ Approve</button>
+            <button class="btn btn-sm" onclick="declineRequest('${r.id}')" style="background:var(--surface2); border:1px solid var(--danger); color:var(--danger);">✕ Decline</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>`;
+}
+
+async function approveRequest(requestId, userId, displayName) {
+  try {
+    // Add to group members
+    await sb.from('group_members').insert({ group_id: currentGroup.id, user_id: userId, display_name: displayName });
+    // Update request status
+    await sb.from('group_requests').update({ status: 'approved' }).eq('id', requestId);
+    showToast(`✅ ${displayName} approved!`);
+    loadPendingRequests();
+    // Refresh members list
+    const { data: members } = await sb.from('group_members').select('*').eq('group_id', currentGroup.id);
+    currentGroupMembers = members || [];
+    const membersEl = document.getElementById('group-members-list');
+    if (membersEl) {
+      membersEl.innerHTML = currentGroupMembers.map((m, i) => {
+        const color = MEMBER_COLORS[i % MEMBER_COLORS.length];
+        const isMe = m.user_id === currentUser.id;
+        return `<span class="chip" style="border-color:${color}; color:${color}; background:${color}18;">
+          <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${color}; margin-right:4px;"></span>
+          ${m.display_name || 'Member'}${isMe ? ' (you)' : ''}
+        </span>`;
+      }).join('');
+    }
+    checkPendingRequestBadge();
+  } catch(e) {
+    showToast('Error approving: ' + e.message, true);
+  }
+}
+
+async function declineRequest(requestId) {
+  await sb.from('group_requests').update({ status: 'declined' }).eq('id', requestId);
+  showToast('Request declined');
+  loadPendingRequests();
+  checkPendingRequestBadge();
+}
+
+async function checkPendingRequestBadge() {
+  // Check all groups owned by current user for pending requests
+  const ownedGroups = myGroups.filter(g => g.created_by === currentUser.id);
+  if (!ownedGroups.length) return;
+  const groupIds = ownedGroups.map(g => g.id);
+  const { data } = await sb.from('group_requests')
+    .select('id')
+    .in('group_id', groupIds)
+    .eq('status', 'pending');
+  const badge = document.getElementById('group-request-badge');
+  if (badge) {
+    if (data?.length) {
+      badge.textContent = data.length;
+      badge.style.display = 'inline';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
 }
 
 function closeGroupDetail() {
@@ -2711,12 +2803,29 @@ async function submitJoinGroup() {
   const { data: group, error } = await sb.from('groups').select('*').eq('invite_code', code).single();
   if (error || !group) { showToast('Group not found — check the code', true); return; }
 
-  const { error: joinError } = await sb.from('group_members').insert({ group_id: group.id, user_id: currentUser.id, display_name: display });
-  if (joinError) { showToast('Could not join — you may already be a member', true); return; }
+  // Check if already a member
+  const { data: existing } = await sb.from('group_members').select('id').eq('group_id', group.id).eq('user_id', currentUser.id);
+  if (existing?.length) { showToast('You are already a member of this group', true); return; }
+
+  // Check if already requested
+  const { data: existingReq } = await sb.from('group_requests').select('id, status').eq('group_id', group.id).eq('user_id', currentUser.id);
+  if (existingReq?.length) {
+    const status = existingReq[0].status;
+    if (status === 'pending') { showToast('Your request is already pending approval', true); return; }
+    if (status === 'declined') { showToast('Your request was declined by the group owner', true); return; }
+  }
+
+  // Send join request
+  const { error: reqError } = await sb.from('group_requests').insert({
+    group_id: group.id,
+    user_id: currentUser.id,
+    display_name: display,
+    status: 'pending'
+  });
+  if (reqError) { showToast('Error sending request: ' + reqError.message, true); return; }
 
   document.getElementById('join-group-modal').style.display = 'none';
-  showToast('👥 Joined ' + group.name + '!');
-  renderGroups();
+  showToast('✅ Join request sent! Waiting for owner approval.');
 }
 
 async function leaveCurrentGroup() {
@@ -3768,6 +3877,13 @@ function previewGroupAvatar(e, context) {
   reader.readAsDataURL(file);
 }
 
+function openGroupAvatarPickerById(groupId) {
+  const group = myGroups.find(g => g.id === groupId);
+  if (!group) return;
+  currentGroup = group;
+  openGroupAvatarPicker();
+}
+
 function openGroupAvatarPicker() {
   if (!currentGroup || currentGroup.created_by !== currentUser.id) {
     showToast('Only the group creator can change the photo', true);
@@ -3816,8 +3932,18 @@ async function saveGroupAvatar() {
     currentGroup.avatar = pendingGroupAvatar;
     const groupInList = myGroups.find(g => g.id === currentGroup.id);
     if (groupInList) groupInList.avatar = pendingGroupAvatar;
-    // Update avatar icon immediately
+    // Update avatar icon immediately in detail view
     updateGroupAvatarUI(pendingGroupAvatar);
+    // Also update list card if visible
+    const listCard = document.getElementById('group-list-avatar-' + currentGroup.id);
+    if (listCard) {
+      const avatar = pendingGroupAvatar;
+      if (avatar.startsWith('data:') || avatar.startsWith('http')) {
+        listCard.innerHTML = `<img src="${avatar}" style="width:100%; height:100%; object-fit:cover;">`;
+      } else {
+        listCard.innerHTML = `<span style="font-size:1.5rem;">${avatar}</span>`;
+      }
+    }
     document.getElementById('group-avatar-modal').style.display = 'none';
     showToast('✅ Group photo updated!');
   } catch(e) {
