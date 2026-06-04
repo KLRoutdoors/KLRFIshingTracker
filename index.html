@@ -556,7 +556,7 @@
       <button class="nav-tab" onclick="showPage('map', event)">Map</button>
       <button class="nav-tab" onclick="showPage('groups', event)">Groups <span id="group-request-badge" style="display:none; background:#ff5c5c; color:#fff; border-radius:50%; font-size:0.65rem; padding:1px 5px; margin-left:3px; font-weight:700;"></span></button>
       <button class="nav-tab" onclick="showPage('board', event)">Bragging Board</button>
-      <button class="nav-tab" onclick="showPage('stats', event)">🏆 My Stats</button>
+      <button class="nav-tab" onclick="showPage('stats', event)">🏆 My Records</button>
       <button class="nav-tab" onclick="showPage('solunar', event)">🔥 Bite Times</button>
     </nav>
     <div class="header-right">
@@ -3350,10 +3350,15 @@ function editCatch(id) {
     document.getElementById('photo-placeholder').style.display = 'none';
   }
 
-  // Update save button
+  // Update save button and title
   const btn = document.getElementById('save-btn');
   btn.textContent = '💾 Save Changes';
   btn.style.background = 'var(--accent2)';
+  document.getElementById('cancel-edit-btn').style.display = 'inline-flex';
+  const titleEl = document.getElementById('log-form-title');
+  const subtitleEl = document.getElementById('log-form-subtitle');
+  if (titleEl) titleEl.textContent = '✏️ Edit Catch';
+  if (subtitleEl) subtitleEl.textContent = 'Update the details for this catch.';
 
   // Scroll to top and switch to log tab
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -4662,7 +4667,12 @@ window.addEventListener('resize', () => {
 
 
 // ── MY STATS ──────────────────────────────────────────────────────────────────
-function renderMyStats() {
+async function renderMyStats() {
+  // Reload catches if not yet loaded
+  if (!catches.length) {
+    await loadCatches();
+  }
+
   const summaryEl = document.getElementById('stats-summary');
   const recordsEl = document.getElementById('stats-records');
   const speciesEl = document.getElementById('stats-species');
@@ -4675,8 +4685,8 @@ function renderMyStats() {
   }
 
   const total = catches.length;
-  const withWeight = catches.filter(c => c.weight > 0);
-  const withLength = catches.filter(c => c.length > 0);
+  const withWeight = catches.filter(c => parseFloat(c.weight) > 0);
+  const withLength = catches.filter(c => parseFloat(c.length) > 0);
   const totalWeight = withWeight.reduce((s, c) => s + parseFloat(c.weight || 0), 0);
   const avgWeight = withWeight.length ? (totalWeight / withWeight.length).toFixed(1) : null;
   const allSpecies = [...new Set(catches.map(c => c.species).filter(Boolean))].sort();
