@@ -870,7 +870,17 @@
           <span id="group-avatar-emoji" style="font-size:1.4rem;">👥</span>
           <img id="group-avatar-img" style="display:none; width:100%; height:100%; object-fit:cover;">
         </div>
-        <h2 id="group-detail-name" style="font-size:1.2rem; font-weight:700; flex:1;"></h2>
+        <div style="flex:1; display:flex; align-items:center; gap:8px;">
+          <h2 id="group-detail-name" style="font-size:1.2rem; font-weight:700;"></h2>
+          <button id="group-name-edit-btn" onclick="startEditGroupName()" style="display:none; background:none; border:none; color:var(--muted); cursor:pointer; font-size:0.9rem; padding:2px 6px;" title="Edit group name">✏️</button>
+          <div id="group-name-edit-wrap" style="display:none; flex:1; display:none;">
+            <input id="group-name-input" type="text" style="background:var(--bg); border:1px solid var(--accent); border-radius:8px; color:var(--text); padding:5px 10px; font-size:1rem; font-weight:700; width:100%; outline:none;" onkeydown="if(event.key==='Enter') saveGroupName(); if(event.key==='Escape') cancelEditGroupName();">
+            <div style="display:flex; gap:6px; margin-top:6px;">
+              <button class="btn btn-primary btn-sm" onclick="saveGroupName()">Save</button>
+              <button class="btn btn-sm" onclick="cancelEditGroupName()" style="background:var(--surface2); border:1px solid var(--border); color:var(--text);">Cancel</button>
+            </div>
+          </div>
+        </div>
         <button class="btn btn-sm" style="background:transparent; border:1px solid var(--danger); color:var(--danger);" onclick="leaveCurrentGroup()">Leave Group</button>
       </div>
 
@@ -2400,6 +2410,8 @@ async function openGroupDetail(groupId) {
   document.getElementById('group-detail').style.display = 'block';
   document.getElementById('group-detail-name').textContent = group.name;
   document.getElementById('group-invite-code').textContent = group.invite_code;
+  const nameEditBtn = document.getElementById('group-name-edit-btn');
+  if (nameEditBtn) nameEditBtn.style.display = group.created_by === currentUser.id ? 'inline-block' : 'none';
   updateGroupAvatarUI(group.avatar || '👥');
 
   // Load members
@@ -2784,7 +2796,23 @@ async function submitCreateGroup() {
   const display = document.getElementById('new-group-display').value.trim();
   if (!name || !display) { showToast('Enter a group name and your display name', true); return; }
 
-  const avatar = pendingGroupAvatarIsNew || null;
+  // Upload avatar to storage if file selected
+  let avatar = null;
+  if (pendingGroupAvatarNewFile) {
+    const tmpId = Date.now().toString();
+    const ext = pendingGroupAvatarNewFile.name.split('.').pop() || 'jpg';
+    const path = `group-avatars/new-${tmpId}.${ext}`;
+    const { error: uploadErr } = await sb.storage.from('catch-photos').upload(path, pendingGroupAvatarNewFile, { cacheControl: '3600', upsert: true });
+    if (!uploadErr) {
+      const { data: urlData } = sb.storage.from('catch-photos').getPublicUrl(path);
+      avatar = urlData.publicUrl;
+    }
+    pendingGroupAvatarNewFile = null;
+  } else if (pendingGroupAvatarIsNew && !pendingGroupAvatarIsNew.startsWith('data:')) {
+    avatar = pendingGroupAvatarIsNew; // emoji
+  }
+  pendingGroupAvatarIsNew = false;
+
   const { data: group, error } = await sb.from('groups').insert({ name, created_by: currentUser.id, avatar }).select().single();
   if (error) { showToast('Error: ' + error.message, true); return; }
 
@@ -3935,18 +3963,58 @@ function triggerGroupAvatarUpload(context) {
   document.getElementById('new-group-avatar-input').click();
 }
 
+let pendingGroupAvatarNewFile = null;
+
 function previewGroupAvatar(e, context) {
   const file = e.target.files[0];
   if (!file) return;
+  pendingGroupAvatarNewFile = file;
   const reader = new FileReader();
   reader.onload = ev => {
     const src = ev.target.result;
     document.getElementById('new-group-avatar-emoji').style.display = 'none';
     const img = document.getElementById('new-group-avatar-img');
     img.src = src; img.style.display = 'block';
-    pendingGroupAvatarIsNew = src;
+    pendingGroupAvatarIsNew = src; // preview only
   };
   reader.readAsDataURL(file);
+}
+
+function startEditGroupName() {
+  const name = document.getElementById('group-detail-name').textContent;
+  document.getElementById('group-detail-name').style.display = 'none';
+  document.getElementById('group-name-edit-btn').style.display = 'none';
+  const wrap = document.getElementById('group-name-edit-wrap');
+  wrap.style.display = 'flex';
+  wrap.style.flexDirection = 'column';
+  const input = document.getElementById('group-name-input');
+  input.value = name;
+  input.focus();
+  input.select();
+}
+
+function cancelEditGroupName() {
+  document.getElementById('group-name-edit-wrap').style.display = 'none';
+  document.getElementById('group-detail-name').style.display = 'block';
+  document.getElementById('group-name-edit-btn').style.display = 'inline-block';
+}
+
+async function saveGroupName() {
+  const newName = document.getElementById('group-name-input').value.trim();
+  if (!newName) { showToast('Name cannot be empty', true); return; }
+  if (!currentGroup) return;
+  try {
+    const { error } = await sb.from('groups').update({ name: newName }).eq('id', currentGroup.id);
+    if (error) throw error;
+    currentGroup.name = newName;
+    const groupInList = myGroups.find(g => g.id === currentGroup.id);
+    if (groupInList) groupInList.name = newName;
+    document.getElementById('group-detail-name').textContent = newName;
+    cancelEditGroupName();
+    showToast('✅ Group name updated!');
+  } catch(e) {
+    showToast('Error: ' + e.message, true);
+  }
 }
 
 function openGroupAvatarPickerById(groupId) {
@@ -3975,12 +4043,15 @@ function openGroupAvatarPicker() {
   document.getElementById('group-avatar-modal').style.display = 'flex';
 }
 
+let pendingGroupAvatarFile = null;
+
 function previewGroupAvatarModal(e) {
   const file = e.target.files[0];
   if (!file) return;
+  pendingGroupAvatarFile = file;
   const reader = new FileReader();
   reader.onload = ev => {
-    pendingGroupAvatar = ev.target.result;
+    pendingGroupAvatar = ev.target.result; // for preview only
     document.getElementById('avatar-preview-emoji').style.display = 'none';
     const img = document.getElementById('avatar-preview-img');
     img.src = pendingGroupAvatar; img.style.display = 'block';
@@ -3998,8 +4069,24 @@ function selectGroupEmoji(emoji) {
 async function saveGroupAvatar() {
   if (!currentGroup || !pendingGroupAvatar) return;
   try {
-    const { error } = await sb.from('groups').update({ avatar: pendingGroupAvatar }).eq('id', currentGroup.id);
+    let avatarToSave = pendingGroupAvatar;
+
+    // If it's a file upload, store in Supabase Storage
+    if (pendingGroupAvatarFile) {
+      const ext = pendingGroupAvatarFile.name.split('.').pop() || 'jpg';
+      const path = `group-avatars/${currentGroup.id}.${ext}`;
+      const { error: uploadErr } = await sb.storage.from('catch-photos').upload(path, pendingGroupAvatarFile, {
+        cacheControl: '3600', upsert: true
+      });
+      if (uploadErr) throw uploadErr;
+      const { data: urlData } = sb.storage.from('catch-photos').getPublicUrl(path);
+      avatarToSave = urlData.publicUrl;
+      pendingGroupAvatarFile = null;
+    }
+
+    const { error } = await sb.from('groups').update({ avatar: avatarToSave }).eq('id', currentGroup.id);
     if (error) throw error;
+    pendingGroupAvatar = avatarToSave;
     // Update in memory
     currentGroup.avatar = pendingGroupAvatar;
     const groupInList = myGroups.find(g => g.id === currentGroup.id);
