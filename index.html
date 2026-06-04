@@ -901,7 +901,7 @@
 </div>
 
   <!-- SOLUNAR PAGE -->
-  <div id="page-solunar" class="page" style="padding:0; background:linear-gradient(180deg, #0d4f6b 0%, #0a3a52 40%, #071f2e 100%); min-height:100vh; color:#fff;">
+  <div id="page-solunar" class="page" style="color:#fff;">
 
     <!-- Location header -->
     <div style="text-align:center; padding:16px 16px 8px;">
@@ -2804,32 +2804,26 @@ function calcSolunarHourly(date, lat, lng) {
   const sun = getSunTimes(date, lat, lng);
   const phaseInfo = getMoonPhaseInfo(date);
 
-  // Build activity curve — 24 hourly values 0-100
+  // Build activity curve — sharp peaks with low valleys
   const hours = Array(24).fill(0).map((_, h) => {
-    let score = 15; // baseline activity
+    let score = 5; // very low baseline so valleys are visible
     const peaks = [
-      { t: moon.overhead, strength: 100, width: 3.5 },
-      { t: moon.underfoot, strength: 100, width: 3.5 },
-      { t: moon.rise, strength: 65, width: 2.5 },
-      { t: moon.set, strength: 65, width: 2.5 },
+      { t: moon.overhead, strength: 95, width: 1.5 },
+      { t: moon.underfoot, strength: 95, width: 1.5 },
+      { t: moon.rise, strength: 55, width: 1.0 },
+      { t: moon.set, strength: 55, width: 1.0 },
     ].filter(p => p.t !== null);
     if (sun) {
-      peaks.push({ t: sun.rise, strength: 45, width: 2 });
-      peaks.push({ t: sun.set, strength: 45, width: 2 });
-      // Daytime baseline boost
-      const dayH = ((h - sun.rise + 24) % 24);
-      const dayLen = ((sun.set - sun.rise + 24) % 24);
-      if (dayH < dayLen) score += 10;
+      peaks.push({ t: sun.rise, strength: 35, width: 0.75 });
+      peaks.push({ t: sun.set, strength: 35, width: 0.75 });
     }
     peaks.forEach(p => {
       let diff = Math.abs(h - p.t);
       if (diff > 12) diff = 24 - diff;
-      const falloff = p.width * 3;
-      if (diff < falloff) {
-        score += p.strength * Math.max(0, 1 - (diff / falloff) * (diff / falloff));
-      }
+      // Gaussian bell curve for natural shape
+      score += p.strength * Math.exp(-(diff * diff) / (2 * p.width * p.width));
     });
-    return Math.min(100, Math.round(score * (phaseInfo.rating / 100)));
+    return Math.min(100, Math.max(3, Math.round(score * (phaseInfo.rating / 100))));
   });
 
   const major = [
