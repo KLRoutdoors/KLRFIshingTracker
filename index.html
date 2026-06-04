@@ -2645,7 +2645,7 @@ async function renderBoard() {
   });
   (commentsData || []).forEach(c => { commentCounts[c.post_id] = (commentCounts[c.post_id] || 0) + 1; });
 
-  grid.innerHTML = data.map(post => {
+  try { grid.innerHTML = data.map(post => {
     const c = post.data;
     const isMe = post.user_id === currentUser.id;
     const liked = myLikes.has(post.id);
@@ -2687,6 +2687,7 @@ async function renderBoard() {
       </div>
     </div>`;
   }).join('');
+  } catch(e) { console.error('Board render error:', e); grid.innerHTML = '<div class="empty-state"><p>Render error: ' + e.message + '</p></div>'; }
 }
 
 function toggleLocationWarning(checkbox) {
