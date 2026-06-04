@@ -1888,13 +1888,12 @@ function renderCatches() {
     <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; position:relative;">
       <button onclick="deleteCatch('${c._id}')" style="position:absolute; top:8px; right:8px; background:rgba(15,25,35,0.7); border:none; color:var(--muted); font-size:0.8rem; cursor:pointer; width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; z-index:2;" title="Delete">🗑</button>
       <div style="display:grid; grid-template-columns:auto 1fr; gap:14px; padding:16px; align-items:start;">
-        <div class="catch-photo" style="position:relative;">
+        <div class="catch-photo">
           ${c.photo ? `<img src="${c.photo}" alt="${c.species}" onclick="openPhoto(this.src)" style="cursor:zoom-in;">` : '🐟'}
-          ${(c.lat && c.lng) ? `<button onclick="event.stopPropagation(); openLocationMap(${c.lat}, ${c.lng}, '${(c.location||c.species).replace(/'/g,"")}')" style="position:absolute; bottom:4px; right:4px; background:rgba(0,0,0,0.65); border:none; color:#fff; border-radius:50%; width:28px; height:28px; cursor:pointer; font-size:0.9rem; display:flex; align-items:center; justify-content:center;" title="View on map">📍</button>` : ''}
         </div>
         <div class="catch-info">
           <h4>${c.species}</h4>
-          <div style="font-size:0.82rem; color:var(--muted);">${dateStr} at ${timeStr}${c.location ? ' · ' + c.location : ''}</div>
+          <div style="font-size:0.82rem; color:var(--muted); display:flex; align-items:center; gap:6px; flex-wrap:wrap;">${dateStr} at ${timeStr}${c.location ? ' · ' + c.location : ''} ${(c.lat && c.lng) ? `<button onclick="event.stopPropagation(); openLocationMap(${c.lat}, ${c.lng}, '${(c.location||c.species).replace(/'/g,"")}')" style="background:none; border:none; color:var(--accent); cursor:pointer; font-size:0.8rem; padding:0; font-weight:600;" title="View on map">📍 Map</button>` : ''}</div>
           <div class="catch-meta">
             ${c.length ? `<span class="chip highlight">📏 ${c.length} in</span>` : ''}
             ${c.weight ? `<span class="chip green">⚖️ ${c.weight} lbs</span>` : ''}
