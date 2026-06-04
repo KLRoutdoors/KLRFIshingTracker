@@ -1985,8 +1985,9 @@ async function updatePatternGroupButtons() {
 
   // Load groups if not yet loaded
   if (!myGroups.length) {
-    const { data } = await sb.from('groups').select('*, group_members(user_id, display_name)');
-    myGroups = data || [];
+    const { data: mRows } = await sb.from('group_members').select('group_id').eq('user_id', currentUser.id);
+    const gIds = (mRows || []).map(r => r.group_id);
+    if (gIds.length) { const { data } = await sb.from('groups').select('*, group_members(user_id, display_name)').in('id', gIds); myGroups = data || []; }
   }
 
   if (!myGroups.length) {
@@ -2484,7 +2485,7 @@ function shareCatch(id) {
   const c = catches.find(x => String(x._id) === String(id));
   if (!c) { showToast('Could not find catch', true); return; }
   currentShareCatch = c;
-  if (myGroups.length === 0) { sb.from('groups').select('*, group_members(user_id, display_name)').then(({data}) => { myGroups = data || []; }); }
+  if (myGroups.length === 0) { sb.from('group_members').select('group_id').eq('user_id', currentUser.id).then(({data: mR}) => { const gIds = (mR||[]).map(r=>r.group_id); if(gIds.length) sb.from('groups').select('*, group_members(user_id, display_name)').in('id', gIds).then(({data}) => { myGroups = data || []; }); }); }
   const date = new Date(c.datetime);
   const dateStr = date.toLocaleDateString('en-US', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
   const timeStr = date.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
@@ -2564,9 +2565,17 @@ let currentShareCatch = null;
 let sharedCatchData = null;
 
 async function renderGroups() {
-  const { data, error } = await sb.from('groups').select('*, group_members(user_id, display_name)');
-  if (error) { showToast('Error loading groups', true); return; }
-  myGroups = data || [];
+  // Only fetch groups where current user is a member
+  const { data: memberRows } = await sb.from('group_members').select('group_id').eq('user_id', currentUser.id);
+  const groupIds = (memberRows || []).map(r => r.group_id);
+
+  let groupsData = [];
+  if (groupIds.length) {
+    const { data, error } = await sb.from('groups').select('*, group_members(user_id, display_name)').in('id', groupIds);
+    if (error) { showToast('Error loading groups', true); return; }
+    groupsData = data || [];
+  }
+  myGroups = groupsData;
 
   const el = document.getElementById('groups-list');
   document.getElementById('group-detail').style.display = 'none';
@@ -2586,7 +2595,7 @@ async function renderGroups() {
       <div class="catch-info">
         <h4>${g.name}</h4>
         <div style="font-size:0.82rem; color:var(--muted);">${memberCount} member${memberCount !== 1 ? 's' : ''}</div>
-        <div class="catch-meta"><span class="chip highlight">Code: ${g.invite_code}</span></div>
+        <div class="catch-meta">${g.created_by === currentUser.id ? `<span class="chip highlight">Code: ${g.invite_code}</span>` : `<span class="chip">Member</span>`}</div>
       </div>
       <div class="catch-actions">
         <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); openGroupDetail('${g.id}')">Open</button>
@@ -2596,6 +2605,9 @@ async function renderGroups() {
 }
 
 async function openGroupDetail(groupId) {
+  // Verify user is actually a member before opening
+  const { data: membership } = await sb.from('group_members').select('id').eq('group_id', groupId).eq('user_id', currentUser.id).single();
+  if (!membership) { showToast('You are not a member of this group', true); return; }
   // Always fetch fresh group data so avatar and name are current across devices
   const { data: freshGroup } = await sb.from('groups').select('*').eq('id', groupId).single();
   if (freshGroup) {
