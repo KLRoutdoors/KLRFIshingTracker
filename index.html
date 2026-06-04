@@ -675,8 +675,17 @@
           <div class="form-section">
             <h3>📍 Location</h3>
             <div class="form-group">
-              <label>Location Name</label>
-              <input type="text" id="f-location" placeholder="e.g. Lake Eildon, Snobs Creek" list="location-list" autocomplete="off">
+              <label>Saved Location</label>
+              <div style="display:flex; gap:8px;">
+                <select id="f-saved-location" onchange="selectSavedLocation(this.value)" style="flex:1; background:var(--bg); border:1px solid var(--border); border-radius:8px; color:var(--text); padding:9px 12px; font-size:0.9rem; outline:none;">
+                  <option value="">— Select a saved location —</option>
+                </select>
+                <button type="button" class="btn btn-primary btn-sm" onclick="openSaveLocationModal()" title="Save new location">＋ New</button>
+              </div>
+            </div>
+            <div class="form-group" id="location-name-group">
+              <label>Location Name <span style="font-size:0.75rem; color:var(--muted);">(or type a custom name)</span></label>
+              <input type="text" id="f-location" placeholder="e.g. Hagerman, Snake River" list="location-list" autocomplete="off">
               <datalist id="location-list"></datalist>
             </div>
             <div class="form-row">
@@ -689,7 +698,7 @@
                 <input type="number" id="f-lng" placeholder="145.5678" step="0.0001">
               </div>
             </div>
-            <div style="display:flex; gap:8px; margin-top:4px;">
+            <div style="display:flex; gap:8px; margin-top:4px; flex-wrap:wrap;">
               <button type="button" class="btn btn-primary btn-sm" onclick="getGPS()">📡 Use My GPS</button>
               <button type="button" class="btn btn-primary btn-sm" onclick="openPinPicker()">📍 Pick on Map</button>
             </div>
@@ -795,14 +804,20 @@
 
   <!-- PATTERNS PAGE -->
   <div id="page-patterns" class="page">
-    <div style="margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
-      <div>
-        <h2 style="font-size:1.3rem; font-weight:700;">Patterns &amp; Insights</h2>
-        <p style="color:var(--muted); font-size:0.9rem; margin-top:4px;">Spot what's working and when.</p>
+    <div style="margin-bottom:16px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:10px;">
+        <div>
+          <h2 style="font-size:1.3rem; font-weight:700;">Patterns &amp; Insights</h2>
+          <p style="color:var(--muted); font-size:0.9rem; margin-top:4px;" id="patterns-subtitle">Spot what's working and when.</p>
+        </div>
+        <select id="pattern-species-filter" onchange="renderPatterns()" style="background:var(--surface2); border:1px solid var(--border); border-radius:8px; color:var(--text); padding:9px 14px; font-size:0.875rem; min-width:160px;">
+          <option value="">All Species</option>
+        </select>
       </div>
-      <select id="pattern-species-filter" onchange="renderPatterns()" style="background:var(--surface2); border:1px solid var(--border); border-radius:8px; color:var(--text); padding:9px 14px; font-size:0.875rem; min-width:160px;">
-        <option value="">All Species</option>
-      </select>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button id="pattern-src-mine" class="btn btn-primary btn-sm" onclick="setPatternSource('mine')" style="font-size:0.8rem;">👤 My Catches</button>
+        <div id="pattern-group-btns" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
+      </div>
     </div>
     <div class="charts-grid">
       <div class="chart-card">
@@ -1232,6 +1247,40 @@
   </div>
 </div>
 
+
+<!-- SAVE LOCATION MODAL -->
+<div id="save-location-modal" style="display:none; position:fixed; inset:0; z-index:3000; background:rgba(0,0,0,0.8); align-items:center; justify-content:center; padding:20px;">
+  <div style="background:var(--surface); border:1px solid var(--border); border-radius:16px; width:100%; max-width:420px; padding:24px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+      <h3 style="font-size:1.1rem; font-weight:700;">📍 Save New Location</h3>
+      <button onclick="document.getElementById('save-location-modal').style.display='none'" style="background:none; border:none; color:var(--muted); font-size:1.4rem; cursor:pointer;">✕</button>
+    </div>
+    <div class="form-group" style="margin-bottom:12px;">
+      <label>Location Name</label>
+      <input type="text" id="sl-name" placeholder="e.g. Hagerman, Buhl Bridge, C.J. Strike" style="width:100%; background:var(--bg); border:1px solid var(--border); border-radius:8px; color:var(--text); padding:9px 12px; font-size:0.9rem; outline:none;">
+    </div>
+    <div class="form-row" style="margin-bottom:12px;">
+      <div class="form-group">
+        <label>Latitude</label>
+        <input type="number" id="sl-lat" placeholder="42.5630" step="0.0001" style="width:100%; background:var(--bg); border:1px solid var(--border); border-radius:8px; color:var(--text); padding:9px 12px; font-size:0.9rem; outline:none;">
+      </div>
+      <div class="form-group">
+        <label>Longitude</label>
+        <input type="number" id="sl-lng" placeholder="-114.4609" step="0.0001" style="width:100%; background:var(--bg); border:1px solid var(--border); border-radius:8px; color:var(--text); padding:9px 12px; font-size:0.9rem; outline:none;">
+      </div>
+    </div>
+    <div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;">
+      <button type="button" class="btn btn-primary btn-sm" onclick="slUseGPS()">📡 Use My GPS</button>
+      <button type="button" class="btn btn-primary btn-sm" onclick="slUseCurrent()">📋 Use Current Form Coords</button>
+    </div>
+    <div class="form-group" style="margin-bottom:16px;">
+      <label>Notes <span style="font-size:0.75rem; color:var(--muted);">(optional — access point, parking, etc.)</span></label>
+      <input type="text" id="sl-notes" placeholder="e.g. Boat ramp at mile marker 5" style="width:100%; background:var(--bg); border:1px solid var(--border); border-radius:8px; color:var(--text); padding:9px 12px; font-size:0.9rem; outline:none;">
+    </div>
+    <button class="btn btn-primary" style="width:100%;" onclick="saveNewLocation()">💾 Save Location</button>
+  </div>
+</div>
+
 <!-- POST TO BOARD MODAL -->
 <div id="board-modal" style="display:none; position:fixed; inset:0; z-index:3000; background:rgba(0,0,0,0.75); align-items:center; justify-content:center; padding:20px; overflow-y:auto;">
   <div style="background:var(--surface); border:1px solid var(--border); border-radius:16px; width:100%; max-width:440px; padding:24px;">
@@ -1520,7 +1569,7 @@ function showPage(name, e) {
   if (page) page.classList.add('active');
   if (e?.currentTarget) e.currentTarget.classList.add('active');
   if (name === 'catches') { renderStats(); renderCatches(); }
-  if (name === 'patterns') renderPatterns();
+  if (name === 'patterns') { updatePatternGroupButtons(); renderPatterns(); }
   if (name === 'map') renderMap();
   if (name === 'groups') { renderGroups(); setTimeout(checkPendingRequestBadge, 500); }
   if (name === 'board') renderBoard();
@@ -1778,10 +1827,10 @@ function renderCatches() {
           <h4>${c.species}</h4>
           <div style="font-size:0.82rem; color:var(--muted);">${dateStr} at ${timeStr}${c.location ? ' · ' + c.location : ''}</div>
           <div class="catch-meta">
-            ${(show('length') && c.length) ? `<span class="chip highlight">📏 ${c.length} in</span>` : ''}
-            ${(show('weight') && c.weight) ? `<span class="chip green">⚖️ ${c.weight} lbs</span>` : ''}
-            ${(show('conditions') && c.conditions) ? `<span class="chip">🌤 ${c.conditions}</span>` : ''}
-            ${(show('lureName') && (c.lureName || c.lureType)) ? `<span class="chip">🎣 ${c.lureName || c.lureType}</span>` : ''}
+            ${c.length ? `<span class="chip highlight">📏 ${c.length} in</span>` : ''}
+            ${c.weight ? `<span class="chip green">⚖️ ${c.weight} lbs</span>` : ''}
+            ${c.conditions ? `<span class="chip">🌤 ${c.conditions}</span>` : ''}
+            ${(c.lureName || c.lureType) ? `<span class="chip">🎣 ${c.lureName || c.lureType}</span>` : ''}
             ${c.rod ? `<span class="chip">🎿 Rod: ${c.rod}</span>` : ''}
             ${c.reel ? `<span class="chip">🔄 Reel: ${c.reel}</span>` : ''}
             ${(show('airTemp') && c.airTemp) ? `<span class="chip">🌡 ${c.airTemp}°F</span>` : ''}
@@ -1820,17 +1869,80 @@ function destroyChart(id) {
 
 const PALETTE = ['#3b9eff','#00c896','#ffb347','#ff5c5c','#c97fff','#5ce8ff','#ff9cce','#a8ff3e'];
 
+let patternSource = 'mine'; // 'mine' or group id
+let patternGroupCatches = []; // cached group catches for patterns
+
+function setPatternSource(source) {
+  patternSource = source;
+  // Update button styles
+  document.getElementById('pattern-src-mine').className =
+    source === 'mine' ? 'btn btn-primary btn-sm' : 'btn btn-sm';
+  document.getElementById('pattern-src-mine').style.cssText =
+    source === 'mine' ? 'font-size:0.8rem;' : 'font-size:0.8rem; background:var(--surface2); border:1px solid var(--border); color:var(--text);';
+  document.querySelectorAll('.pattern-group-btn').forEach(btn => {
+    const active = btn.dataset.groupId === source;
+    btn.className = active ? 'btn btn-primary btn-sm pattern-group-btn' : 'btn btn-sm pattern-group-btn';
+    btn.style.cssText = active ? 'font-size:0.8rem;' : 'font-size:0.8rem; background:var(--surface2); border:1px solid var(--border); color:var(--text);';
+  });
+
+  if (source === 'mine') {
+    patternGroupCatches = [];
+    renderPatterns();
+  } else {
+    // Load group catches
+    loadPatternGroupCatches(source);
+  }
+}
+
+async function loadPatternGroupCatches(groupId) {
+  const subtitle = document.getElementById('patterns-subtitle');
+  if (subtitle) subtitle.textContent = 'Loading group catches…';
+  const { data, error } = await sb.from('group_catches').select('*').eq('group_id', groupId);
+  if (error || !data?.length) {
+    patternGroupCatches = [];
+    if (subtitle) subtitle.textContent = 'No catches in this group yet.';
+    return;
+  }
+  // Flatten group catches data to same format as personal catches
+  patternGroupCatches = data.map(row => row.data).filter(c => c && c.species);
+  const group = myGroups.find(g => g.id === groupId);
+  if (subtitle) subtitle.textContent = `Showing patterns from ${group?.name || 'group'} — ${patternGroupCatches.length} catches`;
+  renderPatterns();
+}
+
+function updatePatternGroupButtons() {
+  const container = document.getElementById('pattern-group-btns');
+  if (!container || !myGroups.length) return;
+  container.innerHTML = myGroups.map(g => `
+    <button class="btn btn-sm pattern-group-btn" data-group-id="${g.id}"
+      onclick="setPatternSource('${g.id}')"
+      style="font-size:0.8rem; background:var(--surface2); border:1px solid var(--border); color:var(--text);">
+      👥 ${g.name}
+    </button>`).join('');
+}
+
 function renderPatterns() {
-  if (!catches.length) return;
+  const activeCatches = patternSource === 'mine' ? catches : patternGroupCatches;
+  if (!activeCatches.length) {
+    const subtitle = document.getElementById('patterns-subtitle');
+    if (patternSource === 'mine') {
+      if (subtitle) subtitle.textContent = "Spot what's working and when.";
+    }
+    return;
+  }
+  if (patternSource === 'mine') {
+    const subtitle = document.getElementById('patterns-subtitle');
+    if (subtitle) subtitle.textContent = `Spot what's working and when. ${catches.length} personal catch${catches.length !== 1 ? 'es' : ''}.`;
+  }
 
   // Populate species dropdown
   const filter = document.getElementById('pattern-species-filter');
   const current = filter.value;
-  const allSpecies = [...new Set(catches.map(c => c.species))].sort();
+  const allSpecies = [...new Set(activeCatches.map(c => c.species))].sort();
   filter.innerHTML = '<option value="">All Species</option>' + allSpecies.map(s => `<option value="${s}" ${s === current ? 'selected' : ''}>${s}</option>`).join('');
 
-  // Filter catches by selected species
-  const filtered = current ? catches.filter(c => c.species === current) : catches;
+  // Filter by selected species
+  const filtered = current ? activeCatches.filter(c => c.species === current) : activeCatches;
   if (!filtered.length) return;
 
   destroyChart('species');
@@ -3156,6 +3268,12 @@ async function renderBoard() {
   });
   (commentsData || []).forEach(c => { commentCounts[c.post_id] = (commentCounts[c.post_id] || 0) + 1; });
 
+  // Store globally for filtering
+  allBoardPosts = data;
+  allLikeCounts = likeCounts;
+  allCommentCounts = commentCounts;
+  allMyLikes = myLikes;
+
   try { grid.innerHTML = data.map(post => {
     const c = post.data;
     const isMe = post.user_id === currentUser.id;
@@ -3397,10 +3515,25 @@ async function deleteComment(commentId) {
 
 
 // ── SOLUNAR CALCULATIONS ──────────────────────────────────────────────────────
-let solunarLat = null, solunarLng = null, solunarDayOffset = 0, solunarDialTimer = null;
+let solunarLat = null, solunarLng = null, solunarDayOffset = 0, solunarDialTimer = null, solunarTzOffset = null;
 
 function toRad(d) { return d * Math.PI / 180; }
 function toDeg(r) { return r * 180 / Math.PI; }
+
+async function fetchTimezoneOffset(lat, lng) {
+  try {
+    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&timezone=auto&hourly=temperature_2m&forecast_days=1`);
+    const data = await res.json();
+    if (data.utc_offset_seconds !== undefined) {
+      solunarTzOffset = data.utc_offset_seconds / 3600;
+    } else {
+      // Fallback: use device timezone
+      solunarTzOffset = -new Date().getTimezoneOffset() / 60;
+    }
+  } catch(e) {
+    solunarTzOffset = -new Date().getTimezoneOffset() / 60;
+  }
+}
 
 function getSunTimes(date, lat, lng) {
   const JD = date / 86400000 + 2440587.5;
@@ -3416,7 +3549,11 @@ function getSunTimes(date, lat, lng) {
   if (Math.abs(cosH) > 1) return null;
   const H = toDeg(Math.acos(cosH)) / 15;
   const noon = (RA - lng / 15 + 12) % 24;
+  // Use device timezone offset (handles DST correctly for user's actual location)
   const tzOffset = -new Date().getTimezoneOffset() / 60;
+  // But if user selected a different location, adjust by lng difference from device
+  const lngOffset = lng / 15;
+  const deviceOffset = tzOffset;
   const toLocal = h => ((h + tzOffset) % 24 + 24) % 24;
   return { rise: toLocal((noon - H + 24) % 24), set: toLocal((noon + H) % 24), noon: toLocal(noon % 24) };
 }
@@ -3433,7 +3570,9 @@ function getMoonTimes(date, lat, lng) {
   const RA = toDeg(Math.atan2(Math.sin(lon) * Math.cos(toRad(23.439)) - Math.tan(lat2) * Math.sin(toRad(23.439)), Math.cos(lon))) / 15;
   const cosH = (Math.sin(toRad(0.125)) - Math.sin(toRad(lat)) * Math.sin(dec)) /
                (Math.cos(toRad(lat)) * Math.cos(dec));
-  const tzOffset = -new Date().getTimezoneOffset() / 60;
+  const tzOffset = (typeof solunarTzOffset !== 'undefined' && solunarTzOffset !== null)
+    ? solunarTzOffset
+    : -new Date().getTimezoneOffset() / 60;
   const toLocal = h => ((h + tzOffset) % 24 + 24) % 24;
   if (Math.abs(cosH) > 1) {
     const t = ((RA - lng / 15) % 24 + 24) % 24;
@@ -4132,6 +4271,126 @@ function updateGroupAvatarUI(avatar) {
   }
 }
 
+// ── SAVED LOCATIONS ──────────────────────────────────────────────────────────
+let savedLocations = [];
+
+async function loadSavedLocations() {
+  const { data } = await sb.from('saved_locations').select('*')
+    .eq('user_id', currentUser.id).order('name');
+  savedLocations = data || [];
+  populateSavedLocationDropdown();
+}
+
+function populateSavedLocationDropdown() {
+  const sel = document.getElementById('f-saved-location');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— Select a saved location —</option>' +
+    savedLocations.map(l => `<option value="${l.id}">${l.name}${l.notes ? ' · ' + l.notes.substring(0,30) : ''}</option>`).join('') +
+    '<option value="__manage__">⚙️ Manage saved locations…</option>';
+}
+
+function selectSavedLocation(id) {
+  if (id === '__manage__') {
+    document.getElementById('f-saved-location').value = '';
+    openManageLocationsModal();
+    return;
+  }
+  if (!id) return;
+  const loc = savedLocations.find(l => l.id === id);
+  if (!loc) return;
+  document.getElementById('f-location').value = loc.name;
+  if (loc.lat) document.getElementById('f-lat').value = loc.lat;
+  if (loc.lng) document.getElementById('f-lng').value = loc.lng;
+}
+
+function openSaveLocationModal() {
+  document.getElementById('sl-name').value = document.getElementById('f-location').value || '';
+  document.getElementById('sl-lat').value = document.getElementById('f-lat').value || '';
+  document.getElementById('sl-lng').value = document.getElementById('f-lng').value || '';
+  document.getElementById('sl-notes').value = '';
+  document.getElementById('save-location-modal').style.display = 'flex';
+  const fab = document.getElementById('fab'); if (fab) fab.style.display = 'none';
+}
+
+function slUseGPS() {
+  navigator.geolocation.getCurrentPosition(pos => {
+    document.getElementById('sl-lat').value = pos.coords.latitude.toFixed(6);
+    document.getElementById('sl-lng').value = pos.coords.longitude.toFixed(6);
+    showToast('📡 GPS coordinates set!');
+  }, () => showToast('Could not get GPS', true));
+}
+
+function slUseCurrent() {
+  const lat = document.getElementById('f-lat').value;
+  const lng = document.getElementById('f-lng').value;
+  if (lat && lng) {
+    document.getElementById('sl-lat').value = lat;
+    document.getElementById('sl-lng').value = lng;
+  } else {
+    showToast('No coordinates in form yet', true);
+  }
+}
+
+async function saveNewLocation() {
+  const name = document.getElementById('sl-name').value.trim();
+  const lat = parseFloat(document.getElementById('sl-lat').value) || null;
+  const lng = parseFloat(document.getElementById('sl-lng').value) || null;
+  const notes = document.getElementById('sl-notes').value.trim() || null;
+  if (!name) { showToast('Enter a location name', true); return; }
+
+  const { data, error } = await sb.from('saved_locations').insert({
+    user_id: currentUser.id, name, lat, lng, notes
+  }).select().single();
+  if (error) { showToast('Error saving: ' + error.message, true); return; }
+
+  savedLocations.push(data);
+  savedLocations.sort((a,b) => a.name.localeCompare(b.name));
+  populateSavedLocationDropdown();
+
+  // Auto-fill the form with this new location
+  document.getElementById('f-location').value = name;
+  if (lat) document.getElementById('f-lat').value = lat;
+  if (lng) document.getElementById('f-lng').value = lng;
+  document.getElementById('f-saved-location').value = data.id;
+
+  document.getElementById('save-location-modal').style.display = 'none';
+  const fab = document.getElementById('fab'); if (fab) fab.style.display = 'flex';
+  showToast('📍 Location saved!');
+}
+
+async function openManageLocationsModal() {
+  // Simple: show a list with delete buttons
+  const list = savedLocations.map(l => `
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border);">
+      <div>
+        <div style="font-weight:600; font-size:0.9rem;">${l.name}</div>
+        ${l.notes ? `<div style="font-size:0.75rem; color:var(--muted);">${l.notes}</div>` : ''}
+        ${l.lat ? `<div style="font-size:0.72rem; color:var(--muted);">${l.lat.toFixed(4)}, ${l.lng.toFixed(4)}</div>` : ''}
+      </div>
+      <button onclick="deleteSavedLocation('${l.id}')" style="background:none; border:1px solid var(--danger); color:var(--danger); border-radius:6px; padding:4px 10px; cursor:pointer; font-size:0.8rem;">Delete</button>
+    </div>`).join('');
+  const modal = `<div style="position:fixed; inset:0; z-index:4000; background:rgba(0,0,0,0.85); display:flex; align-items:center; justify-content:center; padding:20px;">
+    <div style="background:var(--surface); border:1px solid var(--border); border-radius:16px; width:100%; max-width:420px; padding:24px; max-height:80vh; overflow-y:auto;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <h3 style="font-size:1.1rem; font-weight:700;">Saved Locations</h3>
+        <button onclick="this.closest('[style*=fixed]').remove()" style="background:none; border:none; color:var(--muted); font-size:1.4rem; cursor:pointer;">✕</button>
+      </div>
+      ${list || '<div style="color:var(--muted); text-align:center; padding:20px;">No saved locations yet.</div>'}
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', modal);
+}
+
+async function deleteSavedLocation(id) {
+  await sb.from('saved_locations').delete().eq('id', id);
+  savedLocations = savedLocations.filter(l => l.id !== id);
+  populateSavedLocationDropdown();
+  // Close manage modal and reopen
+  document.querySelector('[style*="z-index:4000"]')?.remove();
+  if (savedLocations.length) openManageLocationsModal();
+  showToast('Location deleted');
+}
+
 function refreshSolunar() {
   openSolunarLocationPicker();
 }
@@ -4183,12 +4442,13 @@ async function solunarSearchLocation() {
   }
 }
 
-function solunarSelectResult(lat, lng, name) {
+async function solunarSelectResult(lat, lng, name) {
   solunarLat = parseFloat(lat);
   solunarLng = parseFloat(lng);
   document.getElementById('solunar-location-label').innerHTML = `📍 ${name} <span style="font-size:0.75rem; opacity:0.7;">✏️</span>`;
   document.getElementById('solunar-loc-modal').style.display = 'none';
   const fab = document.getElementById('fab'); if (fab) fab.style.display = 'flex';
+  await fetchTimezoneOffset(solunarLat, solunarLng);
   doRenderSolunar();
 }
 
@@ -4241,6 +4501,7 @@ async function solunarConfirmMapPin() {
   document.getElementById('solunar-loc-modal').style.display = 'none';
   const fab = document.getElementById('fab'); if (fab) fab.style.display = 'flex';
   await reverseGeocode(lat, lng);
+  await fetchTimezoneOffset(lat, lng);
   doRenderSolunar();
 }
 
@@ -4314,6 +4575,7 @@ async function migratePhotosToStorage() {
   showToast(`✅ Migrated ${success} photos${failed ? ', ' + failed + ' failed' : ''}!`);
   if (btn) { btn.style.display = 'none'; }
   await loadCatches();
+  await loadSavedLocations();
   renderStats();
   renderCatches();
 }
