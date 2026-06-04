@@ -4717,7 +4717,7 @@ async function renderMyStats() {
     { icon: '🐟', label: 'Species', value: allSpecies.length },
     { icon: '⚖️', label: 'Total Weight', value: totalWeight ? totalWeight.toFixed(1) + ' lbs' : '—' },
     { icon: '📅', label: 'Days Fished', value: Object.keys(byDay).length },
-    { icon: '📊', label: 'Avg Weight', value: avgWeight ? avgWeight + ' lbs' : '—' },
+    { icon: '📏', label: 'Total Length', value: withLength.length ? withLength.reduce((s,c) => s + parseFloat(c.length||0), 0).toFixed(0) + ' in' : '—' },
     { icon: '🔥', label: 'Best Day', value: bestDayEntry ? bestDayEntry[1] + ' fish' : '—' },
   ];
 
