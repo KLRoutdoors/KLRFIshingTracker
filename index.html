@@ -1250,7 +1250,8 @@ async function deleteCatchFromDb(dbId) {
 function showPage(name, e) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('page-' + name).classList.add('active');
+  const page = document.getElementById('page-' + name);
+  if (page) page.classList.add('active');
   if (e?.currentTarget) e.currentTarget.classList.add('active');
   if (name === 'catches') { renderStats(); renderCatches(); }
   if (name === 'patterns') renderPatterns();
@@ -3150,6 +3151,6 @@ function showToast(msg, error = false) {
   setTimeout(() => t.classList.remove('show'), 2500);
 }
 </script>
-<button id="fab" onclick="showPage('log', {currentTarget: document.querySelector('.nav-tab')})" style="position:fixed; bottom:28px; right:24px; z-index:9998; padding:13px 24px; border-radius:50px; background:#3b9eff; color:#fff; border:none; font-size:0.9rem; font-weight:700; cursor:pointer; box-shadow:0 4px 18px rgba(59,158,255,0.55); white-space:nowrap; display:none;">🎣 Log a Catch</button>
+<button id="fab" onclick="showPage('log', {currentTarget: document.querySelectorAll('.nav-tab')[0]})" style="position:fixed; bottom:28px; right:24px; z-index:9998; padding:13px 24px; border-radius:50px; background:#3b9eff; color:#fff; border:none; font-size:0.9rem; font-weight:700; cursor:pointer; box-shadow:0 4px 18px rgba(59,158,255,0.55); white-space:nowrap; display:none;">🎣 Log a Catch</button>
 </body>
 </html>
