@@ -929,9 +929,9 @@
 
     <!-- Day selector -->
     <div style="display:flex; align-items:center; justify-content:center; gap:0; padding:8px 0 12px; position:relative;">
-      <button onclick="solunarChangeDay(-1)" style="background:none; border:none; color:rgba(255,255,255,0.7); font-size:1.4rem; cursor:pointer; padding:8px 12px;">‹</button>
-      <div id="solunar-day-selector" style="display:flex; gap:0; align-items:flex-end; overflow:hidden;"></div>
-      <button onclick="solunarChangeDay(1)" style="background:none; border:none; color:rgba(255,255,255,0.7); font-size:1.4rem; cursor:pointer; padding:8px 12px;">›</button>
+      <button onclick="solunarChangeDay(-1)" id="solunar-prev-btn" style="background:none; border:none; color:rgba(255,255,255,0.7); font-size:1.4rem; cursor:pointer; padding:8px 12px;">‹</button>
+      <div id="solunar-day-selector" style="display:flex; gap:0; align-items:flex-end; overflow:hidden; width:290px; position:relative;"><div id="solunar-day-track" style="display:flex; gap:0; align-items:flex-end; transition:transform 0.35s cubic-bezier(0.25,0.46,0.45,0.94); will-change:transform;"></div></div>
+      <button onclick="solunarChangeDay(1)" id="solunar-next-btn" style="background:none; border:none; color:rgba(255,255,255,0.7); font-size:1.4rem; cursor:pointer; padding:8px 12px;">›</button>
     </div>
 
     <!-- Activity bar chart -->
@@ -1331,7 +1331,7 @@ function showPage(name, e) {
   if (name === 'map') renderMap();
   if (name === 'groups') renderGroups();
   if (name === 'board') renderBoard();
-  if (name === 'solunar') renderSolunar();
+  if (name === 'solunar') { renderSolunar(); setTimeout(() => { if (typeof drawActivityBars === 'function' && barCurrentHeights) animateBars(barCurrentHeights, [], []); }, 200); }
   const fab = document.getElementById('fab');
   if (fab) fab.style.display = name === 'log' ? 'none' : 'flex';
 }
@@ -2804,25 +2804,25 @@ function calcSolunarHourly(date, lat, lng) {
   const sun = getSunTimes(date, lat, lng);
   const phaseInfo = getMoonPhaseInfo(date);
 
-  // Build activity curve — natural peaks with visible valleys
+  // Build activity curve — dramatic peaks, low valleys
   const hours = Array(24).fill(0).map((_, h) => {
-    let score = 12; // modest baseline so all bars visible but valleys clear
+    let score = 6; // low baseline for dramatic contrast
     const peaks = [
-      { t: moon.overhead, strength: 88, width: 2.0 },
-      { t: moon.underfoot, strength: 88, width: 2.0 },
-      { t: moon.rise, strength: 50, width: 1.5 },
-      { t: moon.set, strength: 50, width: 1.5 },
+      { t: moon.overhead, strength: 94, width: 1.8 },
+      { t: moon.underfoot, strength: 94, width: 1.8 },
+      { t: moon.rise, strength: 58, width: 1.3 },
+      { t: moon.set, strength: 58, width: 1.3 },
     ].filter(p => p.t !== null);
     if (sun) {
-      peaks.push({ t: sun.rise, strength: 30, width: 1.2 });
-      peaks.push({ t: sun.set, strength: 30, width: 1.2 });
+      peaks.push({ t: sun.rise, strength: 32, width: 1.0 });
+      peaks.push({ t: sun.set, strength: 32, width: 1.0 });
     }
     peaks.forEach(p => {
       let diff = Math.abs(h - p.t);
       if (diff > 12) diff = 24 - diff;
       score += p.strength * Math.exp(-(diff * diff) / (2 * p.width * p.width));
     });
-    return Math.min(100, Math.max(5, Math.round(score * (phaseInfo.rating / 100))));
+    return Math.min(100, Math.max(4, Math.round(score * (phaseInfo.rating / 100))));
   });
 
   const major = [
@@ -3003,40 +3003,77 @@ function animateBars(targetHeights, major, minor) {
 }
 
 function drawActivityBars(hours, major, minor) {
-  animateBars(hours, major, minor);
+  const canvas = document.getElementById('solunar-bars');
+  if (!canvas) return;
+  // If canvas has no size yet (hidden/not laid out), wait for layout
+  if (canvas.getBoundingClientRect().width === 0) {
+    setTimeout(() => animateBars(hours, major, minor), 100);
+  } else {
+    animateBars(hours, major, minor);
+  }
 }
 
+let daySelectorBuilt = false;
+
 function renderDaySelector() {
-  const el = document.getElementById('solunar-day-selector');
-  if (!el) return;
+  const track = document.getElementById('solunar-day-track');
+  if (!track) return;
   const today = new Date();
-  let html = '';
-  // Show 5 days: 2 before and 2 after selected
-  for (let i = solunarDayOffset - 2; i <= solunarDayOffset + 2; i++) {
-    const d = new Date(today);
-    d.setDate(d.getDate() + i);
-    const isSelected = i === solunarDayOffset;
-    const mon = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
-    const day = d.getDate();
-    const dow = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
-    html += `<div onclick="solunarJumpToDay(${i})" style="text-align:center; padding:4px 12px; cursor:pointer; min-width:58px; transition:all 0.25s ease; ${isSelected ? 'border-bottom:3px solid #fff;' : 'border-bottom:3px solid transparent;'}">
-      <div style="font-size:0.75rem; color:${isSelected ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.4)'}; letter-spacing:0.05em; transition:color 0.25s;">${mon}</div>
-      <div style="font-size:${isSelected ? '2rem' : '1.25rem'}; font-weight:${isSelected ? '800' : '400'}; color:${isSelected ? '#fff' : 'rgba(255,255,255,0.4)'}; line-height:1.15; transition:all 0.25s;">${day}</div>
-      <div style="font-size:0.75rem; color:${isSelected ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.35)'}; letter-spacing:0.05em; transition:color 0.25s;">${dow}</div>
-    </div>`;
+  const itemW = 58;
+
+  // Build all 29 days only once
+  if (!daySelectorBuilt) {
+    let html = '';
+    for (let i = -14; i <= 14; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() + i);
+      const mon = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+      const day = d.getDate();
+      const dow = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+      html += `<div onclick="solunarJumpToDay(${i})" data-day="${i}" style="text-align:center; padding:4px 0; cursor:pointer; width:${itemW}px; flex-shrink:0; transition:all 0.25s ease; border-bottom:3px solid transparent;">
+        <div class="ds-mon" style="font-size:0.75rem; letter-spacing:0.05em; transition:color 0.25s;">${mon}</div>
+        <div class="ds-day" style="font-weight:400; line-height:1.15; transition:all 0.25s;">${day}</div>
+        <div class="ds-dow" style="font-size:0.75rem; letter-spacing:0.05em; transition:color 0.25s;">${dow}</div>
+      </div>`;
+    }
+    track.innerHTML = html;
+    daySelectorBuilt = true;
   }
-  el.innerHTML = html;
+
+  // Update selected styles
+  track.querySelectorAll('[data-day]').forEach(el => {
+    const i = parseInt(el.dataset.day);
+    const isSelected = i === solunarDayOffset;
+    el.style.borderBottom = isSelected ? '3px solid #fff' : '3px solid transparent';
+    el.querySelector('.ds-mon').style.color = isSelected ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.4)';
+    el.querySelector('.ds-day').style.fontSize = isSelected ? '2rem' : '1.25rem';
+    el.querySelector('.ds-day').style.fontWeight = isSelected ? '800' : '400';
+    el.querySelector('.ds-day').style.color = isSelected ? '#fff' : 'rgba(255,255,255,0.4)';
+    el.querySelector('.ds-dow').style.color = isSelected ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.35)';
+  });
+
+  // Slide track so selected day is centered (2 days visible on each side)
+  const centerOffset = (solunarDayOffset + 14) * itemW; // px from start to selected
+  const containerW = 290;
+  const translateX = -(centerOffset - (containerW / 2) + (itemW / 2));
+  track.style.transform = `translateX(${translateX}px)`;
+
+  const prevBtn = document.getElementById('solunar-prev-btn');
+  const nextBtn = document.getElementById('solunar-next-btn');
+  if (prevBtn) prevBtn.style.opacity = solunarDayOffset <= -14 ? '0.15' : '0.7';
+  if (nextBtn) nextBtn.style.opacity = solunarDayOffset >= 14 ? '0.15' : '0.7';
 }
 
 function solunarJumpToDay(i) {
   if (i === solunarDayOffset) return;
-  solunarDayOffset = Math.max(-10, Math.min(10, i));
+  if (i < -14 || i > 14) return;
+  solunarDayOffset = i;
   animateSolunarChange();
 }
 
 function solunarChangeDay(delta) {
   const newOffset = solunarDayOffset + delta;
-  if (newOffset < -10 || newOffset > 10) return;
+  if (newOffset < -14 || newOffset > 14) return;
   solunarDayOffset = newOffset;
   animateSolunarChange();
 }
@@ -3065,6 +3102,13 @@ function getActivityLabel(pct) {
 
 function doRenderSolunar() {
   if (!solunarLat) return;
+  // Force canvas to have explicit pixel dimensions before drawing
+  const barsCanvas = document.getElementById('solunar-bars');
+  if (barsCanvas && barsCanvas.offsetWidth > 0) {
+    const dpr = window.devicePixelRatio || 1;
+    barsCanvas.width = barsCanvas.offsetWidth * dpr;
+    barsCanvas.height = barsCanvas.offsetHeight * dpr;
+  }
   const today = new Date();
   const target = new Date(today);
   target.setDate(target.getDate() + solunarDayOffset);
