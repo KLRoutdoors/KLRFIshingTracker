@@ -3804,21 +3804,25 @@ function selectGroupEmoji(emoji) {
   pendingGroupAvatar = emoji;
   document.getElementById('avatar-preview-img').style.display = 'none';
   const emojiEl = document.getElementById('avatar-preview-emoji');
-  emojiEl.textContent = emoji; emojiEl.style.display = 'flex';
+  emojiEl.textContent = emoji; emojiEl.style.display = 'inline';
 }
 
 async function saveGroupAvatar() {
   if (!currentGroup || !pendingGroupAvatar) return;
   try {
-    await sb.from('groups').update({ avatar: pendingGroupAvatar }).eq('id', currentGroup.id);
+    const { error } = await sb.from('groups').update({ avatar: pendingGroupAvatar }).eq('id', currentGroup.id);
+    if (error) throw error;
+    // Update in memory
     currentGroup.avatar = pendingGroupAvatar;
-    // Update UI
+    const groupInList = myGroups.find(g => g.id === currentGroup.id);
+    if (groupInList) groupInList.avatar = pendingGroupAvatar;
+    // Update avatar icon immediately
     updateGroupAvatarUI(pendingGroupAvatar);
     document.getElementById('group-avatar-modal').style.display = 'none';
     showToast('✅ Group photo updated!');
-    renderGroups();
   } catch(e) {
     showToast('Error saving: ' + e.message, true);
+    console.error(e);
   }
 }
 
