@@ -1638,6 +1638,7 @@ function showPage(name, e) {
   if (name === 'groups') { renderGroups(); setTimeout(checkPendingRequestBadge, 500); }
   if (name === 'board') renderBoard();
   if (name === 'solunar') { renderSolunar(); }
+  if (name === 'stats') renderMyStats();
   const fab = document.getElementById('fab');
   if (fab) fab.style.display = name === 'log' ? 'none' : 'flex';
 }
