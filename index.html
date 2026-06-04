@@ -2929,6 +2929,7 @@ function drawMoonPhase(phase) {
 
 let barCurrentHeights = null;
 let barAnimFrame = null;
+let solunarCurrentPct = 0;
 
 function drawBarsFrame(heights, major, minor) {
   const canvas = document.getElementById('solunar-bars');
@@ -2947,17 +2948,21 @@ function drawBarsFrame(heights, major, minor) {
     const bH = (val / 100) * maxH;
     const x = i * barW;
     const y = H - bH;
-    let color = 'rgba(77,185,255,0.35)';
+    let color = 'rgba(77,185,255,0.45)';
+    // Check major first, then minor (minor overrides to green if also in major zone)
+    let isMajor = false, isMinor = false;
     major.forEach(p => {
-      let s = p.start, e = p.end;
-      if (e < s) { if (i >= s || i < e) color = 'rgba(245,200,66,0.95)'; }
-      else if (i >= s && i < e) color = 'rgba(245,200,66,0.95)';
+      let s = Math.floor(p.start), e = Math.floor(p.end);
+      if (e < s) { if (i >= s || i < e) isMajor = true; }
+      else if (i >= s && i <= e) isMajor = true;
     });
     minor.forEach(p => {
-      let s = p.start, e = p.end;
-      if (e < s) { if (i >= s || i < e) color = 'rgba(77,220,180,0.85)'; }
-      else if (i >= s && i < e) color = 'rgba(77,220,180,0.85)';
+      let s = Math.floor(p.start), e = Math.floor(p.end);
+      if (e < s) { if (i >= s || i < e) isMinor = true; }
+      else if (i >= s && i <= e) isMinor = true;
     });
+    if (isMajor) color = 'rgba(245,200,66,0.95)';
+    else if (isMinor) color = 'rgba(77,220,180,0.9)';
     ctx.fillStyle = color;
     ctx.beginPath();
     ctx.roundRect(x + 1, y, barW - 2, Math.max(2, bH), 2);
@@ -2972,7 +2977,7 @@ function drawBarsFrame(heights, major, minor) {
     ctx.moveTo(x, 0);
     ctx.lineTo(x, H);
     ctx.strokeStyle = 'rgba(255,100,100,0.85)';
-    ctx.lineWidth = 2 * dpr;
+    ctx.lineWidth = 2;
     ctx.stroke();
   }
 }
@@ -3074,15 +3079,18 @@ function doRenderSolunar() {
 
   const pctEl = document.getElementById('solunar-pct');
   if (pctEl) {
-    const startVal = parseInt(pctEl.textContent) || 0;
+    const startVal = solunarCurrentPct;
     const endVal = data.dayRating;
-    const dur = 600;
+    if (barAnimFrame) cancelAnimationFrame(barAnimFrame);
+    const dur = 500;
     const startTime = performance.now();
-    function countUp(now) {
-      const t = Math.min(1, (now - startTime) / dur);
+    function countUp(ts) {
+      const t = Math.min(1, (ts - startTime) / dur);
       const ease = 1 - Math.pow(1 - t, 3);
-      pctEl.textContent = Math.round(startVal + (endVal - startVal) * ease);
+      const val = Math.round(startVal + (endVal - startVal) * ease);
+      pctEl.textContent = val;
       if (t < 1) requestAnimationFrame(countUp);
+      else solunarCurrentPct = endVal;
     }
     requestAnimationFrame(countUp);
   }
@@ -3103,9 +3111,15 @@ function doRenderSolunar() {
   ).join('');
 
   const minorEl = document.getElementById('solunar-minor-times');
-  if (minorEl) minorEl.innerHTML = data.minor.map(p =>
-    `<div style="font-size:clamp(0.95rem, 4vw, 1.15rem); font-weight:700; color:#00e6aa; white-space:nowrap; letter-spacing:0.02em;">${formatHour(p.start)} - ${formatHour(p.end)}</div>`
-  ).join('');
+  if (minorEl) {
+    if (data.minor.length) {
+      minorEl.innerHTML = data.minor.map(p =>
+        `<div style="font-size:clamp(0.95rem, 4vw, 1.15rem); font-weight:700; color:#00e6aa; white-space:nowrap; letter-spacing:0.02em;">${formatHour(p.start)} - ${formatHour(p.end)}</div>`
+      ).join('');
+    } else {
+      minorEl.innerHTML = '<div style="font-size:0.85rem; color:rgba(255,255,255,0.4); font-style:italic;">No minor periods today</div>';
+    }
+  }
 
   // Sun times
   const sunEl = document.getElementById('solunar-sun-times');
