@@ -2804,26 +2804,25 @@ function calcSolunarHourly(date, lat, lng) {
   const sun = getSunTimes(date, lat, lng);
   const phaseInfo = getMoonPhaseInfo(date);
 
-  // Build activity curve — sharp peaks with low valleys
+  // Build activity curve — natural peaks with visible valleys
   const hours = Array(24).fill(0).map((_, h) => {
-    let score = 5; // very low baseline so valleys are visible
+    let score = 12; // modest baseline so all bars visible but valleys clear
     const peaks = [
-      { t: moon.overhead, strength: 95, width: 1.5 },
-      { t: moon.underfoot, strength: 95, width: 1.5 },
-      { t: moon.rise, strength: 55, width: 1.0 },
-      { t: moon.set, strength: 55, width: 1.0 },
+      { t: moon.overhead, strength: 88, width: 2.0 },
+      { t: moon.underfoot, strength: 88, width: 2.0 },
+      { t: moon.rise, strength: 50, width: 1.5 },
+      { t: moon.set, strength: 50, width: 1.5 },
     ].filter(p => p.t !== null);
     if (sun) {
-      peaks.push({ t: sun.rise, strength: 35, width: 0.75 });
-      peaks.push({ t: sun.set, strength: 35, width: 0.75 });
+      peaks.push({ t: sun.rise, strength: 30, width: 1.2 });
+      peaks.push({ t: sun.set, strength: 30, width: 1.2 });
     }
     peaks.forEach(p => {
       let diff = Math.abs(h - p.t);
       if (diff > 12) diff = 24 - diff;
-      // Gaussian bell curve for natural shape
       score += p.strength * Math.exp(-(diff * diff) / (2 * p.width * p.width));
     });
-    return Math.min(100, Math.max(3, Math.round(score * (phaseInfo.rating / 100))));
+    return Math.min(100, Math.max(5, Math.round(score * (phaseInfo.rating / 100))));
   });
 
   const major = [
@@ -2979,6 +2978,7 @@ function drawBarsFrame(heights, major, minor) {
     ctx.lineWidth = 2;
     ctx.stroke();
   }
+  ctx.restore();
 }
 
 function animateBars(targetHeights, major, minor) {
