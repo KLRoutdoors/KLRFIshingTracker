@@ -2633,7 +2633,8 @@ async function renderBoard() {
   const likesData = likesResult.data || [];
   const commentsData = commentsResult.data || [];
 
-  if (error) { grid.innerHTML = '<div class="empty-state"><p>Could not load board.</p></div>'; return; }
+  console.log('Board data:', data, 'Error:', error);
+  if (error) { grid.innerHTML = `<div class="empty-state"><p>Error: ${JSON.stringify(error)}</p></div>`; return; }
   if (!data?.length) { grid.innerHTML = '<div class="empty-state"><div class="icon">🏆</div><p>No catches posted yet — be the first!</p></div>'; return; }
 
   // Build like/comment counts and my likes
