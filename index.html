@@ -909,20 +909,20 @@
     </div>
 
     <!-- Day rating dial -->
-    <div style="text-align:center; padding:8px 0 4px; position:relative;">
-      <div style="display:flex; align-items:center; justify-content:center; gap:32px;">
-        <div style="text-align:right;">
-          <div style="font-size:0.7rem; letter-spacing:0.12em; color:rgba(255,255,255,0.6); margin-bottom:4px;">DAY RATING</div>
+    <div style="text-align:center; padding:8px 0 4px;">
+      <div style="display:flex; align-items:center; justify-content:center; gap:0; width:100%;">
+        <div style="width:90px; text-align:right; padding-right:12px;">
+          <div style="font-size:0.65rem; letter-spacing:0.1em; color:rgba(255,255,255,0.55);">DAY<br>RATING</div>
         </div>
-        <div style="position:relative; width:120px; height:120px;">
+        <div style="position:relative; width:120px; height:120px; flex-shrink:0;">
           <canvas id="solunar-dial" width="120" height="120"></canvas>
           <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;">
             <div id="solunar-pct" style="font-size:2rem; font-weight:800; color:#fff; line-height:1;">--</div>
             <div style="font-size:0.75rem; color:rgba(255,255,255,0.6);">%</div>
           </div>
         </div>
-        <div style="text-align:left;">
-          <div id="solunar-activity-label" style="font-size:0.7rem; letter-spacing:0.12em; color:rgba(255,255,255,0.6);"></div>
+        <div style="width:90px; text-align:left; padding-left:12px;">
+          <div id="solunar-activity-label" style="font-size:0.65rem; letter-spacing:0.1em; font-weight:700;"></div>
         </div>
       </div>
     </div>
@@ -936,7 +936,7 @@
 
     <!-- Activity bar chart -->
     <div style="padding:0 16px 8px;">
-      <canvas id="solunar-bars" height="140" style="width:100%; display:block;"></canvas>
+      <canvas id="solunar-bars" style="width:100%; display:block; height:clamp(120px, 28vw, 200px);"></canvas>
       <div style="display:flex; justify-content:space-between; padding:4px 2px 0; font-size:0.7rem; color:rgba(255,255,255,0.5);">
         <span>12</span><span>3am</span><span>6am</span><span>9am</span><span>12</span><span>3pm</span><span>6pm</span><span>9pm</span><span>12</span>
       </div>
@@ -944,9 +944,9 @@
 
     <!-- Major / Minor times -->
     <div style="display:grid; grid-template-columns:1fr 1fr; margin:8px 12px; border-radius:12px; overflow:hidden; gap:8px;">
-      <div style="padding:14px 12px; background:rgba(59,158,255,0.18); border:1px solid rgba(59,158,255,0.4); border-radius:12px;">
+      <div style="padding:14px 12px; background:rgba(245,200,66,0.15); border:1px solid rgba(245,200,66,0.4); border-radius:12px;">
         <div id="solunar-major-times" style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;"></div>
-        <div style="font-size:0.65rem; letter-spacing:0.12em; color:#3b9eff; font-weight:700;">MAJOR TIME</div>
+        <div style="font-size:0.65rem; letter-spacing:0.12em; color:#f5c842; font-weight:700;">MAJOR TIME</div>
       </div>
       <div style="padding:14px 12px; background:rgba(0,200,150,0.18); border:1px solid rgba(0,200,150,0.4); border-radius:12px;">
         <div id="solunar-minor-times" style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;"></div>
@@ -2869,7 +2869,8 @@ function drawRatingDial(pct) {
 
   // Filled arc
   const fillEnd = startAngle + (pct / 100) * (endAngle - startAngle);
-  const color = pct >= 70 ? '#4dd9ff' : pct >= 40 ? '#4db8ff' : '#4d8aff';
+  const act = getActivityLabel(pct);
+  const color = act.color;
   ctx.beginPath();
   ctx.arc(cx, cy, r, startAngle, fillEnd);
   ctx.strokeStyle = color;
@@ -2949,8 +2950,8 @@ function drawBarsFrame(heights, major, minor) {
     let color = 'rgba(77,185,255,0.35)';
     major.forEach(p => {
       let s = p.start, e = p.end;
-      if (e < s) { if (i >= s || i < e) color = 'rgba(77,185,255,0.9)'; }
-      else if (i >= s && i < e) color = 'rgba(77,185,255,0.9)';
+      if (e < s) { if (i >= s || i < e) color = 'rgba(245,200,66,0.95)'; }
+      else if (i >= s && i < e) color = 'rgba(245,200,66,0.95)';
     });
     minor.forEach(p => {
       let s = p.start, e = p.end;
@@ -3051,10 +3052,11 @@ function animateSolunarChange() {
 }
 
 function getActivityLabel(pct) {
-  if (pct >= 80) return 'EXCELLENT';
-  if (pct >= 60) return 'GOOD';
-  if (pct >= 40) return 'FAIR';
-  return 'POOR';
+  if (pct >= 80) return { text: 'EXCELLENT', color: '#f5c842' };
+  if (pct >= 65) return { text: 'VERY GOOD', color: '#a8e063' };
+  if (pct >= 50) return { text: 'GOOD', color: '#00c896' };
+  if (pct >= 35) return { text: 'FAIR', color: '#c97fff' };
+  return { text: 'POOR', color: '#ff5c5c' };
 }
 
 function doRenderSolunar() {
@@ -3071,22 +3073,38 @@ function doRenderSolunar() {
   drawMoonPhase(data.phaseInfo.phase);
 
   const pctEl = document.getElementById('solunar-pct');
-  if (pctEl) pctEl.textContent = data.dayRating;
+  if (pctEl) {
+    const startVal = parseInt(pctEl.textContent) || 0;
+    const endVal = data.dayRating;
+    const dur = 600;
+    const startTime = performance.now();
+    function countUp(now) {
+      const t = Math.min(1, (now - startTime) / dur);
+      const ease = 1 - Math.pow(1 - t, 3);
+      pctEl.textContent = Math.round(startVal + (endVal - startVal) * ease);
+      if (t < 1) requestAnimationFrame(countUp);
+    }
+    requestAnimationFrame(countUp);
+  }
 
   const labelEl = document.getElementById('solunar-activity-label');
-  if (labelEl) labelEl.textContent = getActivityLabel(data.dayRating);
+  if (labelEl) {
+    const act = getActivityLabel(data.dayRating);
+    labelEl.textContent = act.text;
+    labelEl.style.color = act.color;
+  }
 
   drawActivityBars(data.hours, data.major, data.minor);
 
   // Major times
   const majorEl = document.getElementById('solunar-major-times');
   if (majorEl) majorEl.innerHTML = data.major.map(p =>
-    `<div style="font-size:0.95rem; font-weight:700; color:#7ec8ff; white-space:nowrap; letter-spacing:0.02em;">${formatHour(p.start)} - ${formatHour(p.end)}</div>`
+    `<div style="font-size:clamp(0.95rem, 4vw, 1.15rem); font-weight:700; color:#f5c842; white-space:nowrap; letter-spacing:0.02em;">${formatHour(p.start)} - ${formatHour(p.end)}</div>`
   ).join('');
 
   const minorEl = document.getElementById('solunar-minor-times');
   if (minorEl) minorEl.innerHTML = data.minor.map(p =>
-    `<div style="font-size:0.95rem; font-weight:700; color:#00e6aa; white-space:nowrap; letter-spacing:0.02em;">${formatHour(p.start)} - ${formatHour(p.end)}</div>`
+    `<div style="font-size:clamp(0.95rem, 4vw, 1.15rem); font-weight:700; color:#00e6aa; white-space:nowrap; letter-spacing:0.02em;">${formatHour(p.start)} - ${formatHour(p.end)}</div>`
   ).join('');
 
   // Sun times
