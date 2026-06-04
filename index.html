@@ -1331,7 +1331,7 @@ function showPage(name, e) {
   if (name === 'map') renderMap();
   if (name === 'groups') renderGroups();
   if (name === 'board') renderBoard();
-  if (name === 'solunar') { renderSolunar(); setTimeout(() => { if (typeof drawActivityBars === 'function' && barCurrentHeights) animateBars(barCurrentHeights, [], []); }, 200); }
+  if (name === 'solunar') { renderSolunar(); }
   const fab = document.getElementById('fab');
   if (fab) fab.style.display = name === 'log' ? 'none' : 'flex';
 }
@@ -2925,99 +2925,43 @@ function drawMoonPhase(phase) {
   ctx.restore();
 }
 
-let barCurrentHeights = null;
-let barAnimFrame = null;
 let solunarCurrentPct = 0;
 
-function drawBarsFrame(heights, major, minor) {
-  const canvas = document.getElementById('solunar-bars');
-  if (!canvas) return;
-  const dpr = window.devicePixelRatio || 1;
-  canvas.width = canvas.offsetWidth * dpr;
-  const ctx = canvas.getContext('2d');
-  const W = canvas.width;
-  const H = canvas.height * dpr;
-  ctx.clearRect(0, 0, W, H);
 
-  const barW = W / 24;
-  const maxH = H - 4;
-
-  heights.forEach((val, i) => {
-    const bH = (val / 100) * maxH;
-    const x = i * barW;
-    const y = H - bH;
-    let color = 'rgba(77,185,255,0.45)';
-    // Check major first, then minor (minor overrides to green if also in major zone)
-    let isMajor = false, isMinor = false;
-    major.forEach(p => {
-      let s = Math.floor(p.start), e = Math.floor(p.end);
-      if (e < s) { if (i >= s || i < e) isMajor = true; }
-      else if (i >= s && i <= e) isMajor = true;
-    });
-    minor.forEach(p => {
-      let s = Math.floor(p.start), e = Math.floor(p.end);
-      if (e < s) { if (i >= s || i < e) isMinor = true; }
-      else if (i >= s && i <= e) isMinor = true;
-    });
-    if (isMajor) color = 'rgba(245,200,66,0.95)';
-    else if (isMinor) color = 'rgba(77,220,180,0.9)';
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.roundRect(x + 1, y, barW - 2, Math.max(2, bH), 2);
-    ctx.fill();
-  });
-
-  if (solunarDayOffset === 0) {
-    const now = new Date();
-    const nowH = now.getHours() + now.getMinutes() / 60;
-    const x = (nowH / 24) * W;
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, H);
-    ctx.strokeStyle = 'rgba(255,100,100,0.85)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-  }
-  ctx.restore();
-}
-
-function animateBars(targetHeights, major, minor) {
-  if (barAnimFrame) cancelAnimationFrame(barAnimFrame);
-  const from = barCurrentHeights ? [...barCurrentHeights] : new Array(24).fill(0);
-  const start = performance.now();
-  const duration = 400;
-
-  function step(now) {
-    const t = Math.min(1, (now - start) / duration);
-    // Ease out cubic
-    const ease = 1 - Math.pow(1 - t, 3);
-    const heights = from.map((f, i) => f + (targetHeights[i] - f) * ease);
-    drawBarsFrame(heights, major, minor);
-    if (t < 1) {
-      barAnimFrame = requestAnimationFrame(step);
-    } else {
-      barCurrentHeights = [...targetHeights];
-    }
-  }
-  barAnimFrame = requestAnimationFrame(step);
-}
 
 function drawActivityBars(hours, major, minor) {
-  const canvas = document.getElementById('solunar-bars');
-  if (!canvas) return;
-  // Store for redraw
+  const container = document.getElementById('solunar-bars');
+  if (!container) return;
   window._lastBarsData = { hours, major, minor };
-  const tryDraw = (attempt) => {
-    const rect = canvas.getBoundingClientRect();
-    if (rect.width > 10) {
-      animateBars(hours, major, minor);
-    } else if (attempt < 10) {
-      setTimeout(() => tryDraw(attempt + 1), 80);
-    }
-  };
-  requestAnimationFrame(() => tryDraw(0));
-}
 
+  const maxVal = Math.max(...hours, 1);
+  const nowHour = new Date().getHours();
+
+  let html = '';
+  hours.forEach((val, i) => {
+    const pct = Math.max(3, Math.round((val / maxVal) * 100));
+
+    let isMajor = false, isMinor = false;
+    major.forEach(p => {
+      const ih = i + 0.5;
+      const s = p.start, e = p.end;
+      if (e < s) { if (ih >= s || ih < e) isMajor = true; }
+      else if (ih >= s && ih <= e) isMajor = true;
+    });
+    if (!isMajor) minor.forEach(p => {
+      const ih = i + 0.5;
+      const s = p.start, e = p.end;
+      if (e < s) { if (ih >= s || ih < e) isMinor = true; }
+      else if (ih >= s && ih <= e) isMinor = true;
+    });
+
+    const color = isMajor ? 'rgba(245,200,66,0.95)' : isMinor ? 'rgba(77,220,180,0.9)' : 'rgba(77,185,255,0.45)';
+    const nowLine = (solunarDayOffset === 0 && i === nowHour) ? 'border-right:2px solid rgba(255,80,80,0.9);' : '';
+    html += `<div style="flex:1; height:${pct}%; min-height:3px; background:${color}; border-radius:2px 2px 0 0; align-self:flex-end; ${nowLine}"></div>`;
+  });
+
+  container.innerHTML = html;
+}
 let daySelectorBuilt = false;
 
 function renderDaySelector() {
@@ -3092,7 +3036,7 @@ function animateSolunarChange() {
   if (pctEl) { pctEl.style.transition = 'opacity 0.2s'; pctEl.style.opacity = '0.3'; }
   setTimeout(() => {
     doRenderSolunar();
-    [dialCanvas].forEach(el => { if (el) { el.style.transition = 'opacity 0.2s'; el.style.opacity = '1'; } });
+    if (dialCanvas) { dialCanvas.style.transition = 'opacity 0.2s'; dialCanvas.style.opacity = '1'; }
     if (pctEl) { pctEl.style.transition = 'opacity 0.2s'; pctEl.style.opacity = '1'; }
   }, 150);
 }
