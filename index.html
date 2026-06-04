@@ -944,11 +944,11 @@
 
     <!-- Major / Minor times -->
     <div style="display:grid; grid-template-columns:1fr 1fr; margin:8px 12px; border-radius:12px; overflow:hidden; gap:8px;">
-      <div style="padding:14px 12px; background:rgba(245,200,66,0.15); border:1px solid rgba(245,200,66,0.4); border-radius:12px;">
+      <div style="padding:12px 10px; background:rgba(245,200,66,0.15); border:1px solid rgba(245,200,66,0.4); border-radius:12px; overflow:hidden;">
         <div id="solunar-major-times" style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;"></div>
         <div style="font-size:0.65rem; letter-spacing:0.12em; color:#f5c842; font-weight:700;">MAJOR TIME</div>
       </div>
-      <div style="padding:14px 12px; background:rgba(0,200,150,0.18); border:1px solid rgba(0,200,150,0.4); border-radius:12px;">
+      <div style="padding:12px 10px; background:rgba(0,200,150,0.18); border:1px solid rgba(0,200,150,0.4); border-radius:12px; overflow:hidden;">
         <div id="solunar-minor-times" style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;"></div>
         <div style="font-size:0.65rem; letter-spacing:0.12em; color:#00c896; font-weight:700;">MINOR TIME</div>
       </div>
@@ -2806,22 +2806,27 @@ function calcSolunarHourly(date, lat, lng) {
 
   // Build activity curve — 24 hourly values 0-100
   const hours = Array(24).fill(0).map((_, h) => {
-    let score = 20; // baseline
+    let score = 15; // baseline activity
     const peaks = [
-      { t: moon.overhead, strength: 100, width: 2 },
-      { t: moon.underfoot, strength: 100, width: 2 },
-      { t: moon.rise, strength: 60, width: 1 },
-      { t: moon.set, strength: 60, width: 1 },
+      { t: moon.overhead, strength: 100, width: 3.5 },
+      { t: moon.underfoot, strength: 100, width: 3.5 },
+      { t: moon.rise, strength: 65, width: 2.5 },
+      { t: moon.set, strength: 65, width: 2.5 },
     ].filter(p => p.t !== null);
     if (sun) {
-      peaks.push({ t: sun.rise, strength: 40, width: 0.75 });
-      peaks.push({ t: sun.set, strength: 40, width: 0.75 });
+      peaks.push({ t: sun.rise, strength: 45, width: 2 });
+      peaks.push({ t: sun.set, strength: 45, width: 2 });
+      // Daytime baseline boost
+      const dayH = ((h - sun.rise + 24) % 24);
+      const dayLen = ((sun.set - sun.rise + 24) % 24);
+      if (dayH < dayLen) score += 10;
     }
     peaks.forEach(p => {
       let diff = Math.abs(h - p.t);
       if (diff > 12) diff = 24 - diff;
-      if (diff < p.width * 2) {
-        score += p.strength * Math.max(0, 1 - diff / (p.width * 2));
+      const falloff = p.width * 3;
+      if (diff < falloff) {
+        score += p.strength * Math.max(0, 1 - (diff / falloff) * (diff / falloff));
       }
     });
     return Math.min(100, Math.round(score * (phaseInfo.rating / 100)));
@@ -3107,17 +3112,17 @@ function doRenderSolunar() {
   // Major times
   const majorEl = document.getElementById('solunar-major-times');
   if (majorEl) majorEl.innerHTML = data.major.map(p =>
-    `<div style="font-size:clamp(0.95rem, 4vw, 1.15rem); font-weight:700; color:#f5c842; white-space:nowrap; letter-spacing:0.02em;">${formatHour(p.start)} - ${formatHour(p.end)}</div>`
+    `<div style="font-size:clamp(0.8rem, 3.5vw, 1.1rem); font-weight:700; color:#f5c842; white-space:nowrap; letter-spacing:0.01em;">${formatHour(p.start)} - ${formatHour(p.end)}</div>`
   ).join('');
 
   const minorEl = document.getElementById('solunar-minor-times');
   if (minorEl) {
     if (data.minor.length) {
       minorEl.innerHTML = data.minor.map(p =>
-        `<div style="font-size:clamp(0.95rem, 4vw, 1.15rem); font-weight:700; color:#00e6aa; white-space:nowrap; letter-spacing:0.02em;">${formatHour(p.start)} - ${formatHour(p.end)}</div>`
+        `<div style="font-size:clamp(0.8rem, 3.5vw, 1.1rem); font-weight:700; color:#00e6aa; white-space:nowrap; letter-spacing:0.01em;">${formatHour(p.start)} - ${formatHour(p.end)}</div>`
       ).join('');
     } else {
-      minorEl.innerHTML = '<div style="font-size:0.85rem; color:rgba(255,255,255,0.4); font-style:italic;">No minor periods today</div>';
+      minorEl.innerHTML = '<div style="font-size:0.85rem; color:rgba(255,255,255,0.4); font-style:italic;">None today</div>';
     }
   }
 
