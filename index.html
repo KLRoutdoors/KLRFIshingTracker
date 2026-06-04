@@ -4458,27 +4458,15 @@ async function saveGroupAvatar() {
 
 function updateGroupAvatarUI(avatar) {
   const wrap = document.getElementById('group-avatar-wrap');
-  const emoji = document.getElementById('group-avatar-emoji');
-  const img = document.getElementById('group-avatar-img');
-  if (!emoji || !img) return;
+  if (!wrap) return;
   if (!avatar || avatar === '👥') {
-    if (img) { img.style.display = 'none'; img.src = ''; }
-    if (emoji) { emoji.textContent = '👥'; emoji.style.display = 'inline'; }
+    wrap.innerHTML = '<span id="group-avatar-emoji" style="font-size:1.4rem;">👥</span><img id="group-avatar-img" style="display:none; width:100%; height:100%; object-fit:cover;">';
     return;
   }
-  if (avatar.startsWith('data:') || avatar.startsWith('http')) {
-    emoji.style.display = 'none';
-    img.style.display = 'block';
-    img.style.width = '100%';
-    img.style.height = '100%';
-    img.style.objectFit = 'cover';
-    // Force reload by clearing src first
-    img.src = '';
-    setTimeout(() => { img.src = avatar; }, 10);
+  if (avatar.startsWith('http') || avatar.startsWith('data:')) {
+    wrap.innerHTML = `<img id="group-avatar-img" src="${avatar}" style="width:100%; height:100%; object-fit:cover; display:block;"><span id="group-avatar-emoji" style="display:none;"></span>`;
   } else {
-    img.style.display = 'none';
-    emoji.textContent = avatar;
-    emoji.style.display = 'inline';
+    wrap.innerHTML = `<span id="group-avatar-emoji" style="font-size:1.4rem;">${avatar}</span><img id="group-avatar-img" style="display:none;">`;
   }
 }
 
