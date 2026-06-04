@@ -3909,7 +3909,7 @@ function calcSolunarHourly(date, lat, lng) {
     daylightScore = (daylightScore / maxPossible) * 62;
   } else { daylightScore = 31; }
 
-  // 4. PEAK OVERLAP / STACKING (8%)
+  // 4. PEAK OVERLAP / STACKING (10%)
   let overlapScore = 0;
   const allPeakTimes = [moon.overhead, moon.underfoot, moon.rise, moon.set].filter(t => t !== null);
   if (sun) allPeakTimes.push(sun.rise, sun.set);
@@ -3917,10 +3917,10 @@ function calcSolunarHourly(date, lat, lng) {
     allPeakTimes.slice(i+1).forEach(t2 => {
       let diff = Math.abs(t1 - t2);
       if (diff > 12) diff = 24 - diff;
-      if (diff < 2.5) overlapScore += (1 - diff / 2.5) * 8;
+      if (diff < 2.5) overlapScore += (1 - diff / 2.5) * 10;
     });
   });
-  overlapScore = Math.min(8, overlapScore);
+  overlapScore = Math.min(10, overlapScore);
 
   // 5. SOLAR NOON ALIGNMENT (5%)
   const alignScore = (solarAlignment - 1.0) / 0.12 * 5;
@@ -3932,7 +3932,7 @@ function calcSolunarHourly(date, lat, lng) {
   let base = daylightScore + overlapScore + alignScore + seasonScore;
 
   // Moon phase and distance MULTIPLY the base (not add) — bad night stays bad
-  const moonMultiplier = 0.65 + (phaseScore / 8) * 0.25 + (distScore / 5) * 0.10;
+  const moonMultiplier = 0.72 + (phaseScore / 8) * 0.20 + (distScore / 5) * 0.08;
   let rating = Math.round(base * moonMultiplier);
 
   // Extreme bonus: perigee full/new moon can push good days exceptional
