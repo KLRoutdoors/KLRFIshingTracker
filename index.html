@@ -917,7 +917,7 @@
         <div style="position:relative;">
           <canvas id="solunar-dial" width="260" height="260"></canvas>
           <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; pointer-events:none;">
-            <div id="solunar-time-display" style="font-size:1.3rem; font-weight:800; color:var(--text); line-height:1;"></div>
+            <div id="solunar-time-display" style="font-size:1.1rem; font-weight:800; color:var(--text); line-height:1; white-space:nowrap; font-variant-numeric:tabular-nums; letter-spacing:0.02em; font-family:monospace;"></div>
             <div id="solunar-period-label" style="font-size:0.72rem; color:var(--accent); margin-top:4px; font-weight:600;"></div>
           </div>
         </div>
@@ -2785,10 +2785,10 @@ function calcSolunar(date, lat, lng) {
     periods.push({ start: (moon.set - 0.5 + 24) % 24, end: (moon.set + 0.5) % 24, type: 'minor', label: '🌘 Moon Set' });
   }
 
-  // Bonus: sunrise/sunset bumps
+  // Sun times — exact points, not windows
   if (sun) {
-    periods.push({ start: (sun.rise - 0.5 + 24) % 24, end: (sun.rise + 0.5) % 24, type: 'bonus', label: '🌅 Sunrise' });
-    periods.push({ start: (sun.set - 0.5 + 24) % 24, end: (sun.set + 0.5) % 24, type: 'bonus', label: '🌇 Sunset' });
+    periods.push({ start: sun.rise, end: sun.rise, type: 'bonus', label: '🌅 Sunrise', exact: true });
+    periods.push({ start: sun.set, end: sun.set, type: 'bonus', label: '🌇 Sunset', exact: true });
   }
 
   // Overall day rating based on moon phase and period overlap
@@ -2847,19 +2847,34 @@ function drawSolunarDial(periods, currentHour) {
     ctx.fillText(label, cx + Math.cos(angle) * lr, cy + Math.sin(angle) * lr);
   });
 
-  // Draw period arcs
+  // Draw period arcs — major/minor as thick filled wedge sectors
   periods.forEach(p => {
+    if (p.exact) {
+      // Sunrise/sunset as a dot marker on the dial edge
+      const angle = (p.start / 24) * Math.PI * 2 - Math.PI / 2;
+      const color = p.label.includes('Sunrise') ? '#ffb347' : '#ff7c2a';
+      const dotR = r - 8;
+      ctx.beginPath();
+      ctx.arc(cx + Math.cos(angle) * dotR, cy + Math.sin(angle) * dotR, 5, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+      return;
+    }
     const startAngle = (p.start / 24) * Math.PI * 2 - Math.PI / 2;
     let endAngle = (p.end / 24) * Math.PI * 2 - Math.PI / 2;
     if (p.end < p.start) endAngle += Math.PI * 2;
-    const arcR = p.type === 'major' ? r - 38 : p.type === 'minor' ? r - 46 : r - 54;
-    const arcWidth = p.type === 'major' ? 12 : 8;
-    const color = p.type === 'major' ? '#3b9eff' : p.type === 'minor' ? '#00c896' : '#ffb347';
+    const color = p.type === 'major' ? '#3b9eff' : '#00c896';
+    const innerR = p.type === 'major' ? r * 0.35 : r * 0.55;
+    const outerR = p.type === 'major' ? r - 20 : r - 20;
+    // Draw filled wedge sector
     ctx.beginPath();
-    ctx.arc(cx, cy, arcR, startAngle, endAngle);
+    ctx.arc(cx, cy, outerR, startAngle, endAngle);
+    ctx.arc(cx, cy, innerR, endAngle, startAngle, true);
+    ctx.closePath();
+    ctx.fillStyle = color + '55';
+    ctx.fill();
     ctx.strokeStyle = color;
-    ctx.lineWidth = arcWidth;
-    ctx.lineCap = 'round';
+    ctx.lineWidth = 2;
     ctx.stroke();
   });
 
@@ -2905,7 +2920,9 @@ function drawSolunarDial(periods, currentHour) {
 }
 
 function getStars(rating) {
-  return '★'.repeat(rating) + '☆'.repeat(5 - rating);
+  const full = '<span style="color:#f5e642;">★</span>';
+  const empty = '<span style="color:#2a4a63;">★</span>';
+  return full.repeat(rating) + empty.repeat(5 - rating);
 }
 
 function getActivityLabel(rating) {
@@ -2962,7 +2979,11 @@ function updateSolunarDial() {
   const timeEl = document.getElementById('solunar-time-display');
   const periodEl = document.getElementById('solunar-period-label');
   if (timeEl) {
-    timeEl.textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const h = now.getHours() % 12 || 12;
+    const m = String(now.getMinutes()).padStart(2,'0');
+    const s = String(now.getSeconds()).padStart(2,'0');
+    const ap = now.getHours() >= 12 ? 'PM' : 'AM';
+    timeEl.textContent = `${String(h).padStart(2,'0')}:${m}:${s} ${ap}`;
   }
   const inPeriod = isInPeriod(currentHour, data.periods);
   if (periodEl) {
@@ -2997,7 +3018,7 @@ function renderSolunarDay(date, lat, lng, isToday) {
            onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'">
         <div style="display:flex; align-items:center; gap:12px; flex:1;">
           <div style="font-weight:700; font-size:0.9rem; min-width:90px;">${dayLabel}</div>
-          <div style="font-size:1rem; color:#f5e642; letter-spacing:1px;">${getStars(data.rating)}</div>
+          <div style="font-size:1rem; letter-spacing:1px;">${getStars(data.rating)}</div>
           <div style="font-size:0.8rem; font-weight:600; color:${activity.color};">${activity.text}</div>
         </div>
         <div style="font-size:0.75rem; color:var(--muted);">${majorPeriods.map(p => formatHour(p.start)).join(' · ')}</div>
@@ -3005,15 +3026,16 @@ function renderSolunarDay(date, lat, lng, isToday) {
       </div>
       <div style="display:none; padding:0 16px 14px; border-top:1px solid var(--border);">
         <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;">
-          ${data.periods.map(p => `
-            <div style="background:var(--surface); border:1px solid ${p.type === 'major' ? '#3b9eff' : p.type === 'minor' ? '#00c896' : '#ffb347'}22; border-radius:8px; padding:8px 12px; min-width:140px;">
-              <div style="font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:${p.type === 'major' ? '#3b9eff' : p.type === 'minor' ? '#00c896' : '#ffb347'}; margin-bottom:3px;">
-                ${p.type === 'major' ? '● Major' : p.type === 'minor' ? '● Minor' : '● Sun'}
-              </div>
+          ${data.periods.map(p => {
+            const typeColor = p.type === 'major' ? '#3b9eff' : p.type === 'minor' ? '#00c896' : (p.label.includes('Sunrise') ? '#ffb347' : '#ff7c2a');
+            const typeLabel = p.type === 'major' ? '● MAJOR' : p.type === 'minor' ? '● MINOR' : (p.label.includes('Sunrise') ? '☀️ SUNRISE' : '🌇 SUNSET');
+            const timeStr = p.exact ? formatHour(p.start) : `${formatHour(p.start)} – ${formatHour(p.end)}`;
+            return `<div style="background:var(--surface); border:1px solid ${typeColor}33; border-radius:8px; padding:8px 12px; min-width:140px;">
+              <div style="font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:${typeColor}; margin-bottom:3px;">${typeLabel}</div>
               <div style="font-size:0.85rem; font-weight:600; color:var(--text);">${p.label}</div>
-              <div style="font-size:0.8rem; color:var(--muted); margin-top:2px;">${formatHour(p.start)} – ${formatHour(p.end)}</div>
-            </div>
-          `).join('')}
+              <div style="font-size:0.8rem; color:var(--muted); margin-top:2px;">${timeStr}</div>
+            </div>`;
+          }).join('')}
         </div>
       </div>
     </div>`;
@@ -3052,17 +3074,20 @@ function doRenderSolunar() {
   // Rating
   const ratingEl = document.getElementById('solunar-rating');
   if (ratingEl) {
-    ratingEl.innerHTML = `<span style="color:#f5e642;">${getStars(data.rating)}</span><br><span style="font-size:0.85rem; color:${activity.color};">${activity.text}</span>`;
+    ratingEl.innerHTML = `${getStars(data.rating)}<br><span style="font-size:0.85rem; color:${activity.color};">${activity.text}</span>`;
   }
 
   // Today's periods list
   const periodsEl = document.getElementById('solunar-periods-today');
   if (periodsEl) {
-    periodsEl.innerHTML = data.periods.filter(p => p.type !== 'bonus').map(p => {
+    periodsEl.innerHTML = data.periods.map(p => {
       const active = isInPeriod(currentHour, [p]);
-      return `<div style="background:var(--surface2); border-radius:8px; padding:8px 12px; border-left:3px solid ${p.type === 'major' ? '#3b9eff' : '#00c896'}; ${active ? 'box-shadow:0 0 8px rgba(59,158,255,0.3);' : ''}">
-        <div style="font-size:0.75rem; font-weight:700; color:${p.type === 'major' ? '#3b9eff' : '#00c896'};">${p.type === 'major' ? 'MAJOR' : 'MINOR'}</div>
-        <div style="font-size:0.8rem; color:var(--text); margin-top:1px;">${formatHour(p.start)} – ${formatHour(p.end)}</div>
+      const typeColor = p.type === 'major' ? '#3b9eff' : p.type === 'minor' ? '#00c896' : (p.label.includes('Sunrise') ? '#ffb347' : '#ff7c2a');
+      const typeLabel = p.type === 'major' ? 'MAJOR' : p.type === 'minor' ? 'MINOR' : (p.label.includes('Sunrise') ? 'SUNRISE' : 'SUNSET');
+      const timeStr = p.exact ? formatHour(p.start) : `${formatHour(p.start)} – ${formatHour(p.end)}`;
+      return `<div style="background:var(--surface2); border-radius:8px; padding:8px 12px; border-left:3px solid ${typeColor}; ${active ? 'box-shadow:0 0 8px rgba(59,158,255,0.3);' : ''}">
+        <div style="font-size:0.75rem; font-weight:700; color:${typeColor};">${typeLabel}</div>
+        <div style="font-size:0.8rem; color:var(--text); margin-top:1px;">${p.label} · ${timeStr}</div>
       </div>`;
     }).join('');
   }
@@ -3072,7 +3097,13 @@ function doRenderSolunar() {
 
   // Update time display
   const timeEl = document.getElementById('solunar-time-display');
-  if (timeEl) timeEl.textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  if (timeEl) {
+    const h = now.getHours() % 12 || 12;
+    const m = String(now.getMinutes()).padStart(2,'0');
+    const s = String(now.getSeconds()).padStart(2,'0');
+    const ap = now.getHours() >= 12 ? 'PM' : 'AM';
+    timeEl.textContent = String(h).padStart(2,'0') + ':' + m + ':' + s + ' ' + ap;
+  }
 
   // Next peak
   const next = getNextPeak(currentHour, data.periods.filter(p => p.type !== 'bonus'));
