@@ -1199,9 +1199,21 @@
     <button class="btn btn-primary" style="width:100%; margin-bottom:10px;" onclick="document.getElementById('group-avatar-file').click()">📷 Upload Photo</button>
     <div style="font-size:0.8rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:10px; text-align:center;">Or choose an emoji</div>
     <div style="display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-bottom:20px;">
-      ${['🎣','🐟','🐠','🎿','🌊','🏕️','🦅','⚡','🔥','🌙','🏆','🎯','🦈','🐬','🦋'].map(e => 
-        `<button onclick="selectGroupEmoji('${e}')" style="width:44px; height:44px; border-radius:50%; background:var(--surface2); border:1px solid var(--border); font-size:1.4rem; cursor:pointer;">${e}</button>`
-      ).join('')}
+      <button onclick="selectGroupEmoji('🎣')" style="width:44px; height:44px; border-radius:50%; background:var(--surface2); border:1px solid var(--border); font-size:1.4rem; cursor:pointer;">🎣</button>
+      <button onclick="selectGroupEmoji('🐟')" style="width:44px; height:44px; border-radius:50%; background:var(--surface2); border:1px solid var(--border); font-size:1.4rem; cursor:pointer;">🐟</button>
+      <button onclick="selectGroupEmoji('🐠')" style="width:44px; height:44px; border-radius:50%; background:var(--surface2); border:1px solid var(--border); font-size:1.4rem; cursor:pointer;">🐠</button>
+      <button onclick="selectGroupEmoji('🎿')" style="width:44px; height:44px; border-radius:50%; background:var(--surface2); border:1px solid var(--border); font-size:1.4rem; cursor:pointer;">🎿</button>
+      <button onclick="selectGroupEmoji('🌊')" style="width:44px; height:44px; border-radius:50%; background:var(--surface2); border:1px solid var(--border); font-size:1.4rem; cursor:pointer;">🌊</button>
+      <button onclick="selectGroupEmoji('🏕️')" style="width:44px; height:44px; border-radius:50%; background:var(--surface2); border:1px solid var(--border); font-size:1.4rem; cursor:pointer;">🏕️</button>
+      <button onclick="selectGroupEmoji('🦅')" style="width:44px; height:44px; border-radius:50%; background:var(--surface2); border:1px solid var(--border); font-size:1.4rem; cursor:pointer;">🦅</button>
+      <button onclick="selectGroupEmoji('⚡')" style="width:44px; height:44px; border-radius:50%; background:var(--surface2); border:1px solid var(--border); font-size:1.4rem; cursor:pointer;">⚡</button>
+      <button onclick="selectGroupEmoji('🔥')" style="width:44px; height:44px; border-radius:50%; background:var(--surface2); border:1px solid var(--border); font-size:1.4rem; cursor:pointer;">🔥</button>
+      <button onclick="selectGroupEmoji('🌙')" style="width:44px; height:44px; border-radius:50%; background:var(--surface2); border:1px solid var(--border); font-size:1.4rem; cursor:pointer;">🌙</button>
+      <button onclick="selectGroupEmoji('🏆')" style="width:44px; height:44px; border-radius:50%; background:var(--surface2); border:1px solid var(--border); font-size:1.4rem; cursor:pointer;">🏆</button>
+      <button onclick="selectGroupEmoji('🎯')" style="width:44px; height:44px; border-radius:50%; background:var(--surface2); border:1px solid var(--border); font-size:1.4rem; cursor:pointer;">🎯</button>
+      <button onclick="selectGroupEmoji('🦈')" style="width:44px; height:44px; border-radius:50%; background:var(--surface2); border:1px solid var(--border); font-size:1.4rem; cursor:pointer;">🦈</button>
+      <button onclick="selectGroupEmoji('🐬')" style="width:44px; height:44px; border-radius:50%; background:var(--surface2); border:1px solid var(--border); font-size:1.4rem; cursor:pointer;">🐬</button>
+      <button onclick="selectGroupEmoji('🦋')" style="width:44px; height:44px; border-radius:50%; background:var(--surface2); border:1px solid var(--border); font-size:1.4rem; cursor:pointer;">🦋</button>
     </div>
     <button class="btn btn-primary" style="width:100%;" onclick="saveGroupAvatar()">Save</button>
   </div>
