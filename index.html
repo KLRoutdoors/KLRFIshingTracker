@@ -3823,16 +3823,23 @@ async function saveGroupAvatar() {
 }
 
 function updateGroupAvatarUI(avatar) {
-  const wrap = document.getElementById('group-avatar-wrap');
   const emoji = document.getElementById('group-avatar-emoji');
   const img = document.getElementById('group-avatar-img');
-  if (!avatar) return;
+  if (!emoji || !img) return;
+  if (!avatar || avatar === '👥') {
+    img.style.display = 'none';
+    emoji.textContent = '👥';
+    emoji.style.display = 'inline';
+    return;
+  }
   if (avatar.startsWith('data:') || avatar.startsWith('http')) {
     emoji.style.display = 'none';
-    img.src = avatar; img.style.display = 'block';
+    img.src = avatar;
+    img.style.display = 'block';
   } else {
     img.style.display = 'none';
-    emoji.textContent = avatar; emoji.style.display = 'flex';
+    emoji.textContent = avatar;
+    emoji.style.display = 'inline';
   }
 }
 
