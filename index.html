@@ -569,8 +569,8 @@
   <div id="page-log" class="page active">
     <div style="max-width:860px;">
       <div style="margin-bottom:20px;">
-        <h2 style="font-size:1.3rem; font-weight:700;">Log a New Catch</h2>
-        <p style="color:var(--muted); font-size:0.9rem; margin-top:4px;">Record all the details while they're fresh.</p>
+        <h2 id="log-form-title" style="font-size:1.3rem; font-weight:700;">Log a New Catch</h2>
+        <p id="log-form-subtitle" style="color:var(--muted); font-size:0.9rem; margin-top:4px;">Record all the details while they're fresh.</p>
       </div>
 
       <div class="form-section" style="margin-bottom:16px;">
@@ -1018,7 +1018,7 @@
     </div>
 
     <!-- Sun / Moon row -->
-    <div style="display:grid; grid-template-columns:1fr auto 1fr; margin:8px 12px 20px; border:1px solid rgba(255,255,255,0.15); border-radius:12px; overflow:hidden; align-items:center;">
+    <div style="display:grid; grid-template-columns:1fr auto 1fr; margin:8px 12px 16px; border:1px solid rgba(255,255,255,0.15); border-radius:12px; overflow:hidden; align-items:center;">
       <!-- Sunrise / Sunset -->
       <div style="padding:14px 12px;">
         <div id="solunar-sun-times" style="display:flex; flex-direction:column; gap:10px;"></div>
@@ -1032,6 +1032,12 @@
       <div style="padding:14px 12px;">
         <div id="solunar-moon-times" style="display:flex; flex-direction:column; gap:10px;"></div>
       </div>
+    </div>
+
+    <!-- 3-Day Weather Forecast -->
+    <div style="margin:0 12px 20px;">
+      <h3 style="font-size:0.85rem; font-weight:700; color:rgba(255,255,255,0.7); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:10px;">🌤 3-Day Weather</h3>
+      <div id="solunar-weather" style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px;"></div>
     </div>
 
   </div>
@@ -1279,28 +1285,16 @@
     <!-- Summary Cards -->
     <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:12px; margin-bottom:20px;" id="stats-summary"></div>
 
-    <!-- Personal Records -->
+    <!-- Personal Records by Species -->
     <div class="chart-card" style="margin-bottom:16px;">
-      <h3 style="margin-bottom:14px;">🥇 Personal Records</h3>
-      <div id="stats-records" style="display:flex; flex-direction:column; gap:10px;"></div>
+      <h3 style="margin-bottom:14px;">🥇 Personal Best by Species</h3>
+      <div id="stats-records" style="display:flex; flex-direction:column; gap:0;"></div>
     </div>
 
-    <!-- Best Spots -->
-    <div class="chart-card" style="margin-bottom:16px;">
-      <h3 style="margin-bottom:14px;">📍 Best Locations</h3>
-      <div id="stats-locations" style="display:flex; flex-direction:column; gap:8px;"></div>
-    </div>
-
-    <!-- Best Month -->
-    <div class="chart-card" style="margin-bottom:16px;">
-      <h3 style="margin-bottom:14px;">📅 Catches by Month</h3>
-      <div class="chart-wrap"><canvas id="chart-stats-month"></canvas></div>
-    </div>
-
-    <!-- Species breakdown -->
+    <!-- All Species Caught -->
     <div class="chart-card">
-      <h3 style="margin-bottom:14px;">🐟 Species Breakdown</h3>
-      <div id="stats-species" style="display:flex; flex-direction:column; gap:8px;"></div>
+      <h3 style="margin-bottom:14px;">🐟 Species Caught</h3>
+      <div id="stats-species" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
     </div>
   </div>
 
@@ -1438,6 +1432,14 @@
 </div>
 
 <!-- PHOTO LIGHTBOX -->
+<div id="location-lightbox" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.92); align-items:center; justify-content:center; flex-direction:column;">
+  <div style="position:relative; width:min(95vw,600px); height:min(80vh,500px); border-radius:14px; overflow:hidden;">
+    <div id="location-lightbox-map" style="width:100%; height:100%;"></div>
+    <div id="location-lightbox-label" style="position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,0.7); color:#fff; font-size:0.85rem; padding:10px 14px; font-weight:600;"></div>
+  </div>
+  <button onclick="closeLocationLightbox()" style="margin-top:14px; background:rgba(255,255,255,0.15); border:none; color:#fff; font-size:0.9rem; padding:10px 24px; border-radius:20px; cursor:pointer;">✕ Close</button>
+</div>
+
 <div id="photo-lightbox" onclick="this.style.display='none'" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.92); align-items:center; justify-content:center; cursor:zoom-out;">
   <img id="lightbox-img" src="" style="max-width:95vw; max-height:92vh; border-radius:10px; object-fit:contain; box-shadow:0 8px 40px rgba(0,0,0,0.6);">
   <button onclick="document.getElementById('photo-lightbox').style.display='none'" style="position:absolute; top:16px; right:16px; background:rgba(0,0,0,0.5); border:none; color:#fff; font-size:1.5rem; width:40px; height:40px; border-radius:50%; cursor:pointer; line-height:1;">✕</button>
@@ -1815,6 +1817,10 @@ function resetForm() {
   document.getElementById('save-btn').textContent = '💾 Save Catch';
   document.getElementById('save-btn').style.background = '';
   document.getElementById('cancel-edit-btn').style.display = 'none';
+  const titleEl = document.getElementById('log-form-title');
+  const subtitleEl = document.getElementById('log-form-subtitle');
+  if (titleEl) titleEl.textContent = 'Log a New Catch';
+  if (subtitleEl) subtitleEl.textContent = "Record all the details while they're fresh.";
   document.getElementById('photo-preview').style.display = 'none';
   document.getElementById('photo-placeholder').style.display = 'block';
 }
@@ -1882,8 +1888,9 @@ function renderCatches() {
     <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; position:relative;">
       <button onclick="deleteCatch('${c._id}')" style="position:absolute; top:8px; right:8px; background:rgba(15,25,35,0.7); border:none; color:var(--muted); font-size:0.8rem; cursor:pointer; width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; z-index:2;" title="Delete">🗑</button>
       <div style="display:grid; grid-template-columns:auto 1fr; gap:14px; padding:16px; align-items:start;">
-        <div class="catch-photo">
+        <div class="catch-photo" style="position:relative;">
           ${c.photo ? `<img src="${c.photo}" alt="${c.species}" onclick="openPhoto(this.src)" style="cursor:zoom-in;">` : '🐟'}
+          ${(c.lat && c.lng) ? `<button onclick="event.stopPropagation(); openLocationMap(${c.lat}, ${c.lng}, '${(c.location||c.species).replace(/'/g,"")}')" style="position:absolute; bottom:4px; right:4px; background:rgba(0,0,0,0.65); border:none; color:#fff; border-radius:50%; width:28px; height:28px; cursor:pointer; font-size:0.9rem; display:flex; align-items:center; justify-content:center;" title="View on map">📍</button>` : ''}
         </div>
         <div class="catch-info">
           <h4>${c.species}</h4>
@@ -2753,7 +2760,10 @@ async function loadGroupFeed() {
     const timeStr = date ? date.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' }) : '';
 
     return `<div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:12px; border-left:4px solid ${color};">
-      ${(show('photo') && c.photo) ? `<img src="${c.photo}" onclick="openPhoto(this.src)" style="width:100%; max-height:320px; object-fit:contain; background:#0f1923; cursor:zoom-in; display:block;">` : ''}
+      <div style="position:relative;">
+        ${(show('photo') && c.photo) ? `<img src="${c.photo}" onclick="openPhoto(this.src)" style="width:100%; max-height:320px; object-fit:contain; background:#0f1923; cursor:zoom-in; display:block;">` : ''}
+        ${(show('location') && c.lat && c.lng) ? `<button onclick="openLocationMap(${c.lat}, ${c.lng}, '${(c.location||c.species||'').replace(/'/g,'')}')" style="position:absolute; top:8px; right:8px; background:rgba(0,0,0,0.65); border:none; color:#fff; border-radius:20px; padding:5px 10px; cursor:pointer; font-size:0.8rem; font-weight:600;">📍 View on Map</button>` : ''}
+      </div>
       <div style="padding:14px 16px;">
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
           <h4 style="font-size:1.05rem; font-weight:700; color:var(--text);">${c.species}</h4>
@@ -3250,6 +3260,37 @@ async function shareToGroup(groupId) {
 
 
 // ── PHOTO LIGHTBOX ────────────────────────────────────────────────────────────
+let locationLightboxMap = null;
+
+function openLocationMap(lat, lng, label) {
+  if (!lat || !lng) return;
+  document.getElementById('location-lightbox').style.display = 'flex';
+  document.getElementById('location-lightbox-label').textContent = '📍 ' + (label || 'Catch Location');
+
+  setTimeout(() => {
+    if (locationLightboxMap) {
+      locationLightboxMap.remove();
+      locationLightboxMap = null;
+    }
+    locationLightboxMap = L.map('location-lightbox-map').setView([lat, lng], 14);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles © Esri', maxZoom: 19
+    }).addTo(locationLightboxMap);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+      attribution: '', maxZoom: 19, opacity: 0.8
+    }).addTo(locationLightboxMap);
+    L.marker([lat, lng]).addTo(locationLightboxMap)
+      .bindPopup(`<div style="font-weight:600;">${label || 'Catch Location'}</div>`)
+      .openPopup();
+    locationLightboxMap.invalidateSize();
+  }, 100);
+}
+
+function closeLocationLightbox() {
+  document.getElementById('location-lightbox').style.display = 'none';
+  if (locationLightboxMap) { locationLightboxMap.remove(); locationLightboxMap = null; }
+}
+
 function openPhoto(src) {
   document.getElementById('lightbox-img').src = src;
   document.getElementById('photo-lightbox').style.display = 'flex';
@@ -3365,7 +3406,10 @@ async function renderBoard() {
 
     return `<div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; position:relative;">
       ${isMe ? `<button onclick="deleteFromBoard('${post.id}')" style="position:absolute; top:8px; right:8px; background:rgba(15,25,35,0.8); border:none; color:var(--muted); font-size:0.8rem; cursor:pointer; width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; z-index:2;" title="Remove">🗑</button>` : ''}
-      ${c.photo ? `<img src="${c.photo}" onclick="openPhoto(this.src)" style="width:100%; max-height:400px; object-fit:contain; background:#0f1923; cursor:zoom-in; display:block;">` : ''}
+      <div style="position:relative;">
+        ${c.photo ? `<img src="${c.photo}" onclick="openPhoto(this.src)" style="width:100%; max-height:400px; object-fit:contain; background:#0f1923; cursor:zoom-in; display:block;">` : ''}
+        ${(c.lat && c.lng) ? `<button onclick="openLocationMap(${c.lat}, ${c.lng}, '${(c.location||c.species||'').replace(/'/g,'')}')" style="position:absolute; top:8px; right:8px; background:rgba(0,0,0,0.65); border:none; color:#fff; border-radius:20px; padding:5px 10px; cursor:pointer; font-size:0.8rem; font-weight:600;">📍 View on Map</button>` : ''}
+      </div>
       <div style="padding:14px 16px;">
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
           <h3 style="font-size:1.1rem; font-weight:800; color:var(--text);">${c.species}</h3>
@@ -3771,19 +3815,6 @@ function calcSolunarHourly(date, lat, lng) {
   const moon = getMoonTimes(date, lat, lng);
   const sun = getSunTimes(date, lat, lng);
   const phaseInfo = getMoonPhaseInfo(date);
-  // Species-specific modifiers
-  const speciesSel = document.getElementById('solunar-species')?.value || 'general';
-  const speciesModifier = {
-    general: { nightBonus: 0, dawnDuskBonus: 0, coldPenalty: 0 },
-    bass:    { nightBonus: -0.1, dawnDuskBonus: 0.15, coldPenalty: -0.1 },   // dawn/dusk feeders
-    trout:   { nightBonus: 0.05, dawnDuskBonus: 0.1, coldPenalty: 0.05 },    // cold water, active early
-    catfish: { nightBonus: 0.2, dawnDuskBonus: 0.05, coldPenalty: -0.15 },   // strong night feeders
-    sturgeon:{ nightBonus: 0.1, dawnDuskBonus: 0.05, coldPenalty: 0.1 },     // cold tolerant, tidal
-    walleye: { nightBonus: 0.15, dawnDuskBonus: 0.15, coldPenalty: 0 },      // low light specialists
-    crappie: { nightBonus: 0, dawnDuskBonus: 0.1, coldPenalty: -0.05 },
-    carp:    { nightBonus: -0.05, dawnDuskBonus: 0.1, coldPenalty: -0.2 },
-  }[speciesSel] || { nightBonus: 0, dawnDuskBonus: 0, coldPenalty: 0 };
-
   const seasonal = getSeasonalBonus(date);
   const solarAlignment = getSolarNoonAlignment(moon, sun);
   const combinedMultiplier = phaseInfo.phaseMultiplier * phaseInfo.distBonus * seasonal;
@@ -3856,8 +3887,6 @@ function calcSolunarHourly(date, lat, lng) {
     });
     const maxPossible = allPeaks.reduce((a, b) => a + b.weight, 0);
     daylightScore = (daylightScore / maxPossible) * 62;
-    // Species night/dawn modifier
-    daylightScore = Math.max(0, daylightScore * (1 + speciesModifier.nightBonus));
   } else { daylightScore = 31; }
 
   // 4. PEAK OVERLAP / STACKING (8%)
@@ -4301,6 +4330,7 @@ function openGroupAvatarPicker() {
     return;
   }
   pendingGroupAvatar = currentGroup.avatar || null;
+  pendingGroupAvatarFile = null; // reset file on open
   // Show current avatar in preview
   const emojiEl = document.getElementById('avatar-preview-emoji');
   const imgEl = document.getElementById('avatar-preview-img');
@@ -4338,21 +4368,27 @@ function selectGroupEmoji(emoji) {
 }
 
 async function saveGroupAvatar() {
-  if (!currentGroup || !pendingGroupAvatar) return;
+  if (!currentGroup) return;
+  if (!pendingGroupAvatar && !pendingGroupAvatarFile) return;
   try {
     let avatarToSave = pendingGroupAvatar;
 
-    // If it's a file upload, store in Supabase Storage
+    // Always upload file to storage if we have one
     if (pendingGroupAvatarFile) {
-      const ext = pendingGroupAvatarFile.name.split('.').pop() || 'jpg';
+      showToast('Uploading photo…');
+      const ext = (pendingGroupAvatarFile.name.split('.').pop() || 'jpg').toLowerCase();
       const path = `group-avatars/${currentGroup.id}.${ext}`;
       const { error: uploadErr } = await sb.storage.from('catch-photos').upload(path, pendingGroupAvatarFile, {
         cacheControl: '3600', upsert: true
       });
-      if (uploadErr) throw uploadErr;
+      if (uploadErr) throw new Error('Upload failed: ' + uploadErr.message);
       const { data: urlData } = sb.storage.from('catch-photos').getPublicUrl(path);
       avatarToSave = urlData.publicUrl;
       pendingGroupAvatarFile = null;
+    } else if (avatarToSave && avatarToSave.startsWith('data:')) {
+      // base64 preview with no file — shouldn't happen but handle it
+      showToast('No file to save', true);
+      return;
     }
 
     const { error } = await sb.from('groups').update({ avatar: avatarToSave }).eq('id', currentGroup.id);
@@ -4627,132 +4663,84 @@ window.addEventListener('resize', () => {
 
 // ── MY STATS ──────────────────────────────────────────────────────────────────
 function renderMyStats() {
+  const summaryEl = document.getElementById('stats-summary');
+  const recordsEl = document.getElementById('stats-records');
+  const speciesEl = document.getElementById('stats-species');
+
   if (!catches.length) {
-    document.getElementById('stats-summary').innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="icon">🎣</div><p>No catches yet — go fish!</p></div>';
+    if (summaryEl) summaryEl.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="icon">🎣</div><p>No catches yet — go fish!</p></div>';
+    if (recordsEl) recordsEl.innerHTML = '';
+    if (speciesEl) speciesEl.innerHTML = '';
     return;
   }
 
   const total = catches.length;
   const withWeight = catches.filter(c => c.weight > 0);
   const withLength = catches.filter(c => c.length > 0);
-  const totalWeight = withWeight.reduce((s, c) => s + c.weight, 0);
+  const totalWeight = withWeight.reduce((s, c) => s + parseFloat(c.weight || 0), 0);
   const avgWeight = withWeight.length ? (totalWeight / withWeight.length).toFixed(1) : null;
-  const heaviest = withWeight.length ? withWeight.reduce((a, b) => a.weight > b.weight ? a : b) : null;
-  const longest = withLength.length ? withLength.reduce((a, b) => a.length > b.length ? a : b) : null;
-  const species = [...new Set(catches.map(c => c.species).filter(Boolean))];
+  const allSpecies = [...new Set(catches.map(c => c.species).filter(Boolean))].sort();
 
-  // Count catches per day to find best day
+  // Days fished
   const byDay = {};
-  catches.forEach(c => {
-    if (!c.datetime) return;
-    const day = c.datetime.slice(0, 10);
-    byDay[day] = (byDay[day] || 0) + 1;
-  });
+  catches.forEach(c => { if (c.datetime) { const d = c.datetime.slice(0,10); byDay[d] = (byDay[d]||0)+1; } });
   const bestDayEntry = Object.entries(byDay).sort((a,b) => b[1]-a[1])[0];
-  const bestDay = bestDayEntry ? { date: bestDayEntry[0], count: bestDayEntry[1] } : null;
-
-  // Streak — consecutive days with catches
-  const sortedDays = Object.keys(byDay).sort();
-  let maxStreak = 1, streak = 1;
-  for (let i = 1; i < sortedDays.length; i++) {
-    const diff = (new Date(sortedDays[i]) - new Date(sortedDays[i-1])) / 86400000;
-    streak = diff === 1 ? streak + 1 : 1;
-    if (streak > maxStreak) maxStreak = streak;
-  }
 
   // Summary cards
   const summaryData = [
     { icon: '🎣', label: 'Total Catches', value: total },
-    { icon: '🐟', label: 'Species', value: species.length },
+    { icon: '🐟', label: 'Species', value: allSpecies.length },
     { icon: '⚖️', label: 'Total Weight', value: totalWeight ? totalWeight.toFixed(1) + ' lbs' : '—' },
-    { icon: '📅', label: 'Fishing Days', value: Object.keys(byDay).length },
-    { icon: '🔥', label: 'Best Streak', value: maxStreak + (maxStreak === 1 ? ' day' : ' days') },
+    { icon: '📅', label: 'Days Fished', value: Object.keys(byDay).length },
     { icon: '📊', label: 'Avg Weight', value: avgWeight ? avgWeight + ' lbs' : '—' },
+    { icon: '🔥', label: 'Best Day', value: bestDayEntry ? bestDayEntry[1] + ' fish' : '—' },
   ];
 
-  document.getElementById('stats-summary').innerHTML = summaryData.map(s => `
+  if (summaryEl) summaryEl.innerHTML = summaryData.map(s => `
     <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px; text-align:center;">
       <div style="font-size:1.5rem; margin-bottom:4px;">${s.icon}</div>
       <div style="font-size:1.2rem; font-weight:800; color:var(--text);">${s.value}</div>
       <div style="font-size:0.72rem; color:var(--muted); margin-top:2px; text-transform:uppercase; letter-spacing:0.06em;">${s.label}</div>
     </div>`).join('');
 
-  // Personal records
-  const records = [];
-  if (heaviest) records.push({ icon: '⚖️', label: 'Heaviest Fish', value: `${heaviest.weight} lbs`, sub: `${heaviest.species}${heaviest.location ? ' · ' + heaviest.location : ''}`, date: heaviest.datetime });
-  if (longest) records.push({ icon: '📏', label: 'Longest Fish', value: `${longest.length} in`, sub: `${longest.species}${longest.location ? ' · ' + longest.location : ''}`, date: longest.datetime });
-  if (bestDay) records.push({ icon: '🔥', label: 'Best Day', value: `${bestDay.count} catches`, sub: new Date(bestDay.date).toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'}), date: null });
-
-  // PB per species
-  const pbBySpecies = {};
-  catches.filter(c => c.weight > 0).forEach(c => {
-    if (!pbBySpecies[c.species] || c.weight > pbBySpecies[c.species].weight) pbBySpecies[c.species] = c;
-  });
-  Object.entries(pbBySpecies).forEach(([sp, c]) => {
-    records.push({ icon: '🏆', label: `${sp} PB`, value: `${c.weight} lbs`, sub: c.length ? `${c.length} in` : '', date: c.datetime });
+  // PB per species — biggest and longest for each
+  const pbWeight = {}, pbLength = {};
+  catches.forEach(c => {
+    if (!c.species) return;
+    const w = parseFloat(c.weight || 0);
+    const l = parseFloat(c.length || 0);
+    if (w > 0 && (!pbWeight[c.species] || w > pbWeight[c.species].weight)) pbWeight[c.species] = { ...c, weight: w };
+    if (l > 0 && (!pbLength[c.species] || l > pbLength[c.species].length)) pbLength[c.species] = { ...c, length: l };
   });
 
-  document.getElementById('stats-records').innerHTML = records.map(r => `
-    <div style="display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--border);">
-      <div style="font-size:1.4rem; width:32px; text-align:center;">${r.icon}</div>
-      <div style="flex:1;">
-        <div style="font-size:0.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em;">${r.label}</div>
-        <div style="font-size:1.1rem; font-weight:700; color:var(--text);">${r.value}</div>
-        ${r.sub ? `<div style="font-size:0.8rem; color:var(--muted);">${r.sub}</div>` : ''}
-      </div>
-      ${r.date ? `<div style="font-size:0.75rem; color:var(--muted);">${new Date(r.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</div>` : ''}
-    </div>`).join('') || '<div style="color:var(--muted); font-size:0.9rem;">Log more catches to see records!</div>';
+  if (recordsEl) {
+    const rows = allSpecies.map(sp => {
+      const w = pbWeight[sp];
+      const l = pbLength[sp];
+      const count = catches.filter(c => c.species === sp).length;
+      return `<div style="display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--border);">
+        <div style="flex:1;">
+          <div style="font-weight:700; font-size:0.95rem; color:var(--text); margin-bottom:4px;">${sp}</div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            ${w ? `<span class="chip green">⚖️ PB: ${w.weight} lbs</span>` : ''}
+            ${l ? `<span class="chip highlight">📏 PB: ${l.length} in</span>` : ''}
+            <span class="chip">🎣 ${count} caught</span>
+          </div>
+        </div>
+      </div>`;
+    });
+    recordsEl.innerHTML = rows.join('') || '<div style="color:var(--muted);">No data yet</div>';
+  }
 
-  // Best locations
-  const locMap = {};
-  catches.filter(c => c.location).forEach(c => {
-    if (!locMap[c.location]) locMap[c.location] = { count: 0, weight: 0 };
-    locMap[c.location].count++;
-    if (c.weight) locMap[c.location].weight += c.weight;
-  });
-  const locEntries = Object.entries(locMap).sort((a,b) => b[1].count - a[1].count).slice(0, 6);
-  const maxLoc = locEntries[0]?.[1].count || 1;
-  document.getElementById('stats-locations').innerHTML = locEntries.map(([loc, d]) => `
-    <div>
-      <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-        <span style="font-size:0.875rem; font-weight:600; color:var(--text);">📍 ${loc}</span>
-        <span style="font-size:0.8rem; color:var(--muted);">${d.count} catch${d.count !== 1 ? 'es' : ''}${d.weight ? ' · ' + d.weight.toFixed(1) + ' lbs' : ''}</span>
-      </div>
-      <div style="background:var(--surface2); border-radius:4px; height:6px; overflow:hidden;">
-        <div style="background:var(--accent); height:100%; width:${Math.round(d.count/maxLoc*100)}%; border-radius:4px; transition:width 0.4s;"></div>
-      </div>
-    </div>`).join('') || '<div style="color:var(--muted); font-size:0.9rem;">Add locations to your catches to see stats here.</div>';
-
-  // Monthly chart
-  destroyChart('stats-month');
-  const monthCounts = Array(12).fill(0);
-  catches.forEach(c => { if (c.datetime) monthCounts[new Date(c.datetime).getMonth()]++; });
-  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  chartInstances['stats-month'] = new Chart(document.getElementById('chart-stats-month'), {
-    type: 'bar',
-    data: {
-      labels: MONTHS,
-      datasets: [{ data: monthCounts, backgroundColor: monthCounts.map(v => v === Math.max(...monthCounts) ? '#f5c842' : '#3b9eff99'), borderColor: monthCounts.map(v => v === Math.max(...monthCounts) ? '#f5c842' : '#3b9eff'), borderWidth: 2, borderRadius: 4 }]
-    },
-    options: { plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#7a9bb5' }, grid: { color: '#1e3045' } }, y: { ticks: { color: '#7a9bb5', stepSize: 1 }, grid: { color: '#1e3045' } } } }
-  });
-
-  // Species breakdown
-  const spCount = {};
-  catches.forEach(c => { if (c.species) spCount[c.species] = (spCount[c.species] || 0) + 1; });
-  const spEntries = Object.entries(spCount).sort((a,b) => b[1]-a[1]);
-  const maxSp = spEntries[0]?.[1] || 1;
+  // Species chips
   const PALETTE = ['#3b9eff','#00c896','#ffb347','#ff5c5c','#c97fff','#5ce8ff','#ffda6a','#a8ff3e'];
-  document.getElementById('stats-species').innerHTML = spEntries.map(([sp, count], i) => `
-    <div>
-      <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-        <span style="font-size:0.875rem; font-weight:600; color:${PALETTE[i % PALETTE.length]};">${sp}</span>
-        <span style="font-size:0.8rem; color:var(--muted);">${count} (${Math.round(count/total*100)}%)</span>
-      </div>
-      <div style="background:var(--surface2); border-radius:4px; height:6px; overflow:hidden;">
-        <div style="background:${PALETTE[i % PALETTE.length]}; height:100%; width:${Math.round(count/maxSp*100)}%; border-radius:4px;"></div>
-      </div>
-    </div>`).join('');
+  if (speciesEl) {
+    speciesEl.innerHTML = allSpecies.map((sp, i) => {
+      const color = PALETTE[i % PALETTE.length];
+      const count = catches.filter(c => c.species === sp).length;
+      return `<div style="background:${color}18; border:1px solid ${color}44; border-radius:20px; padding:6px 14px; font-size:0.85rem; font-weight:600; color:${color};">${sp} <span style="opacity:0.7;">${count}</span></div>`;
+    }).join('');
+  }
 }
 
 // ── PHOTO COMPRESSION ─────────────────────────────────────────────────────────
