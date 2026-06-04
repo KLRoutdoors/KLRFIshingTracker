@@ -2455,17 +2455,15 @@ async function saveGroupEditVisibility() {
   checkboxes.forEach(cb => { if (!cb.checked) hidden.push(cb.dataset.field); });
 
   const updatedData = { ...currentGroupEditData, _hidden: hidden };
-  console.log('Saving hidden fields:', hidden, 'Row ID:', currentGroupEditRowId, 'User:', currentUser.id);
 
   try {
     const { data: updateResult, error } = await sb.from('group_catches')
       .update({ data: updatedData })
       .eq('id', currentGroupEditRowId)
-      .eq('user_id', currentUser.id)
       .select();
     console.log('Update result:', updateResult, 'Error:', error);
     if (error) throw error;
-    if (!updateResult?.length) { showToast('No rows updated — check ownership', true); return; }
+    if (!updateResult?.length) { showToast('Row not found', true); return; }
 
     document.getElementById('group-edit-modal').style.display = 'none';
     const fab = document.getElementById('fab'); if (fab) fab.style.display = 'flex';
