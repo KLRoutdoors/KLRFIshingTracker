@@ -913,7 +913,7 @@
       <div style="background:var(--surface); border:1px solid var(--border); border-radius:16px 16px 0 0; width:100%; max-width:520px; padding:24px; padding-bottom:32px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
           <h3 style="font-size:1.1rem; font-weight:700;">Set Location</h3>
-          <button onclick="document.getElementById('solunar-loc-modal').style.display='none'" style="background:none; border:none; color:var(--muted); font-size:1.4rem; cursor:pointer;">✕</button>
+          <button onclick="document.getElementById('solunar-loc-modal').style.display='none'; const f=document.getElementById('fab'); if(f) f.style.display='flex';" style="background:none; border:none; color:var(--muted); font-size:1.4rem; cursor:pointer;">✕</button>
         </div>
         <!-- GPS -->
         <button onclick="solunarUseGPS()" class="btn btn-primary" style="width:100%; margin-bottom:12px; display:flex; align-items:center; justify-content:center; gap:8px;">
@@ -1042,10 +1042,38 @@
 
 <!-- SHARE TO GROUP MODAL -->
 <div id="share-group-modal" style="display:none; position:fixed; inset:0; z-index:3000; background:rgba(0,0,0,0.75); align-items:center; justify-content:center; padding:20px;">
-  <div style="background:var(--surface); border:1px solid var(--border); border-radius:16px; width:100%; max-width:420px; padding:24px;">
-    <h3 style="margin-bottom:16px; font-size:1.1rem;">Share to Group</h3>
+  <div style="background:var(--surface); border:1px solid var(--border); border-radius:16px; width:100%; max-width:420px; padding:24px; max-height:90vh; overflow-y:auto;">
+    <h3 style="margin-bottom:6px; font-size:1.1rem;">Share to Group</h3>
+    <p style="font-size:0.82rem; color:var(--muted); margin-bottom:16px;">Choose what to share with the group.</p>
+
+    <div style="font-size:0.8rem; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:10px;">Include in share</div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:16px;">
+      <label style="display:flex; align-items:center; gap:8px; font-size:0.875rem; cursor:pointer; color:var(--text);">
+        <input type="checkbox" id="gf-photo" checked style="width:auto;"> Photo
+      </label>
+      <label style="display:flex; align-items:center; gap:8px; font-size:0.875rem; cursor:pointer; color:var(--text);">
+        <input type="checkbox" id="gf-size" checked style="width:auto;"> Length &amp; Weight
+      </label>
+      <label style="display:flex; align-items:center; gap:8px; font-size:0.875rem; cursor:pointer; color:var(--text);">
+        <input type="checkbox" id="gf-tackle" checked style="width:auto;"> Rod, Reel &amp; Bait
+      </label>
+      <label style="display:flex; align-items:center; gap:8px; font-size:0.875rem; cursor:pointer; color:var(--text);">
+        <input type="checkbox" id="gf-location" style="width:auto;"> Location
+      </label>
+      <label style="display:flex; align-items:center; gap:8px; font-size:0.875rem; cursor:pointer; color:var(--text);">
+        <input type="checkbox" id="gf-date" checked style="width:auto;"> Date &amp; Time
+      </label>
+      <label style="display:flex; align-items:center; gap:8px; font-size:0.875rem; cursor:pointer; color:var(--text);">
+        <input type="checkbox" id="gf-weather" style="width:auto;"> Weather
+      </label>
+      <label style="display:flex; align-items:center; gap:8px; font-size:0.875rem; cursor:pointer; color:var(--text);">
+        <input type="checkbox" id="gf-notes" checked style="width:auto;"> Notes
+      </label>
+    </div>
+
+    <div style="font-size:0.8rem; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:10px;">Share to</div>
     <div id="share-group-list" style="display:flex; flex-direction:column; gap:10px; margin-bottom:16px;"></div>
-    <button class="btn" style="width:100%; background:var(--surface2); border:1px solid var(--border); color:var(--text);" onclick="document.getElementById('share-group-modal').style.display='none'">Cancel</button>
+    <button class="btn" style="width:100%; background:var(--surface2); border:1px solid var(--border); color:var(--text);" onclick="document.getElementById('share-group-modal').style.display='none'; const f=document.getElementById('fab'); if(f) f.style.display='flex';">Cancel</button>
   </div>
 </div>
 
@@ -2685,11 +2713,14 @@ async function submitToBoard() {
   if (document.getElementById('bf-notes').checked) postData.notes = c.notes;
 
   try {
-    await sb.from('brag_board').insert({ user_id: currentUser.id, display_name: displayName, data: postData });
+    const { error } = await sb.from('brag_board').insert({ user_id: currentUser.id, display_name: displayName, data: postData });
+    if (error) throw error;
     document.getElementById('board-modal').style.display = 'none';
     showToast('🏆 Posted to the board!');
+    renderBoard();
   } catch (e) {
-    showToast('Error posting: ' + e.message, true);
+    showToast('Error posting: ' + (e.message || e), true);
+    console.error('Board post error:', e);
   }
 }
 
@@ -3269,6 +3300,7 @@ function refreshSolunar() {
 
 function openSolunarLocationPicker() {
   document.getElementById('solunar-loc-modal').style.display = 'flex';
+  const fab = document.getElementById('fab'); if (fab) fab.style.display = 'none';
   document.getElementById('solunar-search-results').innerHTML = '';
   document.getElementById('solunar-loc-search').value = '';
   document.getElementById('solunar-map-picker').style.display = 'none';
@@ -3279,6 +3311,7 @@ function openSolunarLocationPicker() {
 function solunarUseGPS() {
   document.getElementById('solunar-location-label').textContent = '📍 Getting GPS…';
   document.getElementById('solunar-loc-modal').style.display = 'none';
+  const fab = document.getElementById('fab'); if (fab) fab.style.display = 'flex';
   navigator.geolocation.getCurrentPosition(pos => {
     solunarLat = pos.coords.latitude;
     solunarLng = pos.coords.longitude;
@@ -3317,6 +3350,7 @@ function solunarSelectResult(lat, lng, name) {
   solunarLng = parseFloat(lng);
   document.getElementById('solunar-location-label').innerHTML = `📍 ${name} <span style="font-size:0.75rem; opacity:0.7;">✏️</span>`;
   document.getElementById('solunar-loc-modal').style.display = 'none';
+  const fab = document.getElementById('fab'); if (fab) fab.style.display = 'flex';
   doRenderSolunar();
 }
 
@@ -3367,6 +3401,7 @@ async function solunarConfirmMapPin() {
   solunarLat = lat;
   solunarLng = lng;
   document.getElementById('solunar-loc-modal').style.display = 'none';
+  const fab = document.getElementById('fab'); if (fab) fab.style.display = 'flex';
   await reverseGeocode(lat, lng);
   doRenderSolunar();
 }
