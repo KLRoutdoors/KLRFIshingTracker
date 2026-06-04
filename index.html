@@ -2800,12 +2800,9 @@ async function loadGroupFeed() {
         </div>
         ${(show('spot') && c.spot) ? `<div style="font-size:0.82rem; color:var(--muted); margin-bottom:6px;">📌 ${c.spot}</div>` : ''}
         ${(show('notes') && c.notes) ? `<div style="font-size:0.82rem; color:var(--muted); font-style:italic; margin-bottom:8px;">${c.notes}</div>` : ''}
-        <div style="display:flex; gap:8px; margin-top:6px;">
-          ${!isMe
-            ? `<button class="btn btn-primary btn-sm" style="flex:1;" onclick="saveGroupCatchById('${row.id}')">💾 Save to My Catches</button>`
-            : `<button class="btn btn-sm" style="flex:1; background:var(--surface2); border:1px solid var(--border); color:var(--text);" onclick="openGroupEditModalById('${row.id}')">✏️ Edit Visibility</button>`
-          }
-        </div>
+        ${isMe ? `<div style="display:flex; gap:8px; margin-top:6px;">
+          <button class="btn btn-sm" style="flex:1; background:var(--surface2); border:1px solid var(--border); color:var(--text);" onclick="openGroupEditModalById('${row.id}')">✏️ Edit Visibility</button>
+        </div>` : ''}
       </div>
     </div>`;
   }).join('');
