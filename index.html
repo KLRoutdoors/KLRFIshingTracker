@@ -1253,29 +1253,15 @@
   <div style="background:var(--surface); border:1px solid var(--border); border-radius:16px; width:100%; max-width:420px; padding:24px;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
       <h3 style="font-size:1.1rem; font-weight:700;">📍 Save New Location</h3>
-      <button onclick="document.getElementById('save-location-modal').style.display='none'" style="background:none; border:none; color:var(--muted); font-size:1.4rem; cursor:pointer;">✕</button>
+      <button onclick="document.getElementById('save-location-modal').style.display='none'; const f=document.getElementById('fab'); if(f) f.style.display='flex';" style="background:none; border:none; color:var(--muted); font-size:1.4rem; cursor:pointer;">✕</button>
     </div>
     <div class="form-group" style="margin-bottom:12px;">
       <label>Location Name</label>
-      <input type="text" id="sl-name" placeholder="e.g. Hagerman, Buhl Bridge, C.J. Strike" style="width:100%; background:var(--bg); border:1px solid var(--border); border-radius:8px; color:var(--text); padding:9px 12px; font-size:0.9rem; outline:none;">
-    </div>
-    <div class="form-row" style="margin-bottom:12px;">
-      <div class="form-group">
-        <label>Latitude</label>
-        <input type="number" id="sl-lat" placeholder="42.5630" step="0.0001" style="width:100%; background:var(--bg); border:1px solid var(--border); border-radius:8px; color:var(--text); padding:9px 12px; font-size:0.9rem; outline:none;">
-      </div>
-      <div class="form-group">
-        <label>Longitude</label>
-        <input type="number" id="sl-lng" placeholder="-114.4609" step="0.0001" style="width:100%; background:var(--bg); border:1px solid var(--border); border-radius:8px; color:var(--text); padding:9px 12px; font-size:0.9rem; outline:none;">
-      </div>
-    </div>
-    <div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;">
-      <button type="button" class="btn btn-primary btn-sm" onclick="slUseGPS()">📡 Use My GPS</button>
-      <button type="button" class="btn btn-primary btn-sm" onclick="slUseCurrent()">📋 Use Current Form Coords</button>
+      <input type="text" id="sl-name" placeholder="e.g. Hagerman, Buhl Bridge, C.J. Strike" style="width:100%; background:var(--bg); border:1px solid var(--border); border-radius:8px; color:var(--text); padding:9px 12px; font-size:0.9rem; outline:none;" onkeydown="if(event.key==='Enter') saveNewLocation()">
     </div>
     <div class="form-group" style="margin-bottom:16px;">
-      <label>Notes <span style="font-size:0.75rem; color:var(--muted);">(optional — access point, parking, etc.)</span></label>
-      <input type="text" id="sl-notes" placeholder="e.g. Boat ramp at mile marker 5" style="width:100%; background:var(--bg); border:1px solid var(--border); border-radius:8px; color:var(--text); padding:9px 12px; font-size:0.9rem; outline:none;">
+      <label>Notes <span style="font-size:0.75rem; color:var(--muted);">(optional)</span></label>
+      <input type="text" id="sl-notes" placeholder="e.g. Below the dam, east bank" style="width:100%; background:var(--bg); border:1px solid var(--border); border-radius:8px; color:var(--text); padding:9px 12px; font-size:0.9rem; outline:none;" onkeydown="if(event.key==='Enter') saveNewLocation()">
     </div>
     <button class="btn btn-primary" style="width:100%;" onclick="saveNewLocation()">💾 Save Location</button>
   </div>
@@ -4318,47 +4304,23 @@ function selectSavedLocation(id) {
   const loc = savedLocations.find(l => l.id === id);
   if (!loc) return;
   document.getElementById('f-location').value = loc.name;
-  if (loc.lat) document.getElementById('f-lat').value = loc.lat;
-  if (loc.lng) document.getElementById('f-lng').value = loc.lng;
 }
 
 function openSaveLocationModal() {
   document.getElementById('sl-name').value = document.getElementById('f-location').value || '';
-  document.getElementById('sl-lat').value = document.getElementById('f-lat').value || '';
-  document.getElementById('sl-lng').value = document.getElementById('f-lng').value || '';
   document.getElementById('sl-notes').value = '';
   document.getElementById('save-location-modal').style.display = 'flex';
   const fab = document.getElementById('fab'); if (fab) fab.style.display = 'none';
-}
-
-function slUseGPS() {
-  navigator.geolocation.getCurrentPosition(pos => {
-    document.getElementById('sl-lat').value = pos.coords.latitude.toFixed(6);
-    document.getElementById('sl-lng').value = pos.coords.longitude.toFixed(6);
-    showToast('📡 GPS coordinates set!');
-  }, () => showToast('Could not get GPS', true));
-}
-
-function slUseCurrent() {
-  const lat = document.getElementById('f-lat').value;
-  const lng = document.getElementById('f-lng').value;
-  if (lat && lng) {
-    document.getElementById('sl-lat').value = lat;
-    document.getElementById('sl-lng').value = lng;
-  } else {
-    showToast('No coordinates in form yet', true);
-  }
+  setTimeout(() => document.getElementById('sl-name').focus(), 100);
 }
 
 async function saveNewLocation() {
   const name = document.getElementById('sl-name').value.trim();
-  const lat = parseFloat(document.getElementById('sl-lat').value) || null;
-  const lng = parseFloat(document.getElementById('sl-lng').value) || null;
   const notes = document.getElementById('sl-notes').value.trim() || null;
   if (!name) { showToast('Enter a location name', true); return; }
 
   const { data, error } = await sb.from('saved_locations').insert({
-    user_id: currentUser.id, name, lat, lng, notes
+    user_id: currentUser.id, name, notes
   }).select().single();
   if (error) { showToast('Error saving: ' + error.message, true); return; }
 
@@ -4366,10 +4328,8 @@ async function saveNewLocation() {
   savedLocations.sort((a,b) => a.name.localeCompare(b.name));
   populateSavedLocationDropdown();
 
-  // Auto-fill the form with this new location
+  // Auto-fill the location name in the form
   document.getElementById('f-location').value = name;
-  if (lat) document.getElementById('f-lat').value = lat;
-  if (lng) document.getElementById('f-lng').value = lng;
   document.getElementById('f-saved-location').value = data.id;
 
   document.getElementById('save-location-modal').style.display = 'none';
