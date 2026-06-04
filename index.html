@@ -1129,6 +1129,47 @@
   </div>
 </div>
 
+<!-- SHARE ALL CATCHES MODAL -->
+<div id="share-all-modal" style="display:none; position:fixed; inset:0; z-index:3000; background:rgba(0,0,0,0.8); align-items:flex-end; justify-content:center;">
+  <div style="background:var(--surface); border:1px solid var(--border); border-radius:16px 16px 0 0; width:100%; max-width:520px; padding:24px; max-height:85vh; overflow-y:auto;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+      <h3 style="font-size:1.1rem; font-weight:700;">📤 Share All My Catches</h3>
+      <button onclick="document.getElementById('share-all-modal').style.display='none'; const f=document.getElementById('fab'); if(f) f.style.display='flex';" style="background:none; border:none; color:var(--muted); font-size:1.4rem; cursor:pointer;">✕</button>
+    </div>
+    <p id="share-all-subtitle" style="font-size:0.82rem; color:var(--muted); margin-bottom:18px;"></p>
+
+    <div style="font-size:0.8rem; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:10px;">Include in share</div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:20px;">
+      <label style="display:flex; align-items:center; gap:8px; font-size:0.875rem; cursor:pointer; color:var(--text);">
+        <input type="checkbox" id="sa-photo" checked style="width:auto;"> 📷 Photo
+      </label>
+      <label style="display:flex; align-items:center; gap:8px; font-size:0.875rem; cursor:pointer; color:var(--text);">
+        <input type="checkbox" id="sa-size" checked style="width:auto;"> 📏 Length &amp; Weight
+      </label>
+      <label style="display:flex; align-items:center; gap:8px; font-size:0.875rem; cursor:pointer; color:var(--text);">
+        <input type="checkbox" id="sa-tackle" checked style="width:auto;"> 🎣 Rod, Reel &amp; Bait
+      </label>
+      <label style="display:flex; align-items:center; gap:8px; font-size:0.875rem; cursor:pointer; color:var(--text);">
+        <input type="checkbox" id="sa-location" style="width:auto;" onchange="document.getElementById('sa-loc-warn').style.display=this.checked?'block':'none'"> 📍 Location
+      </label>
+      <label style="display:flex; align-items:center; gap:8px; font-size:0.875rem; cursor:pointer; color:var(--text);">
+        <input type="checkbox" id="sa-date" checked style="width:auto;"> 📅 Date &amp; Time
+      </label>
+      <label style="display:flex; align-items:center; gap:8px; font-size:0.875rem; cursor:pointer; color:var(--text);">
+        <input type="checkbox" id="sa-weather" style="width:auto;"> 🌤 Weather
+      </label>
+      <label style="display:flex; align-items:center; gap:8px; font-size:0.875rem; cursor:pointer; color:var(--text);">
+        <input type="checkbox" id="sa-notes" checked style="width:auto;"> 📝 Notes
+      </label>
+      <label style="display:flex; align-items:center; gap:8px; font-size:0.875rem; cursor:pointer; color:var(--text);">
+        <input type="checkbox" id="sa-depth" style="width:auto;"> ↕️ Depth
+      </label>
+    </div>
+    <div id="sa-loc-warn" style="display:none; background:rgba(255,179,71,0.12); border:1px solid var(--warn); border-radius:10px; padding:12px 14px; font-size:0.82rem; color:var(--warn); margin-bottom:14px;">⚠️ Sharing location will reveal your fishing spots to everyone in the group. Make sure you're happy sharing them before proceeding.</div>
+    <button class="btn btn-primary" style="width:100%;" onclick="submitShareAllCatches()">📤 Share All Catches</button>
+  </div>
+</div>
+
 <!-- POST TO BOARD MODAL -->
 <div id="board-modal" style="display:none; position:fixed; inset:0; z-index:3000; background:rgba(0,0,0,0.75); align-items:center; justify-content:center; padding:20px; overflow-y:auto;">
   <div style="background:var(--surface); border:1px solid var(--border); border-radius:16px; width:100%; max-width:440px; padding:24px;">
@@ -2535,7 +2576,7 @@ async function saveGroupCatch(c) {
 async function loadGroupMap() {
   if (!currentGroup) return;
   const { data } = await sb.from('group_catches').select('*').eq('group_id', currentGroup.id);
-  const withGPS = (data || []).filter(r => r.data?.lat && r.data?.lng);
+  const withGPS = (data || []).filter(r => r.data?.lat && r.data?.lng && !r.data?._hidden?.includes('location'));
 
   if (!groupMap) {
     groupMap = L.map('group-map').setView([-25.5, 134.0], 4);
@@ -2721,24 +2762,69 @@ function openShareToGroup() {
   document.getElementById('share-group-modal').style.display = 'flex';
 }
 
-async function shareAllCatchesToGroup() {
+function shareAllCatchesToGroup() {
   if (!currentGroup) return;
   if (!catches.length) { showToast('No catches to share', true); return; }
+  document.getElementById('share-all-subtitle').textContent =
+    `Sharing ${catches.length} catches to ${currentGroup.name}. Choose which fields to include.`;
+  document.getElementById('share-all-modal').style.display = 'flex';
+  const fab = document.getElementById('fab'); if (fab) fab.style.display = 'none';
+}
 
-  if (!confirm(`Share all ${catches.length} of your catches to ${currentGroup.name}? This will add them all to the group feed.`)) return;
+async function submitShareAllCatches() {
+  if (!currentGroup || !catches.length) return;
 
-  const btn = event?.target;
-  if (btn) { btn.disabled = true; btn.textContent = 'Sharing…'; }
+  const includePhoto    = document.getElementById('sa-photo').checked;
+  const includeSize     = document.getElementById('sa-size').checked;
+  const includeTackle   = document.getElementById('sa-tackle').checked;
+  const includeLocation = document.getElementById('sa-location').checked;
+  const includeDate     = document.getElementById('sa-date').checked;
+  const includeWeather  = document.getElementById('sa-weather').checked;
+  const includeNotes    = document.getElementById('sa-notes').checked;
+  const includeDepth    = document.getElementById('sa-depth').checked;
+
+  // Build _hidden array from unchecked fields
+  const hidden = [];
+  if (!includePhoto) hidden.push('photo');
+  if (!includeSize) { hidden.push('length'); hidden.push('weight'); }
+  if (!includeTackle) { hidden.push('lureName'); hidden.push('rod'); hidden.push('reel'); hidden.push('line'); }
+  if (!includeLocation) hidden.push('location');
+  if (!includeDate) hidden.push('datetime');
+  if (!includeWeather) { hidden.push('conditions'); hidden.push('airTemp'); hidden.push('waterTemp'); hidden.push('wind'); }
+  if (!includeNotes) hidden.push('notes');
+  if (!includeDepth) hidden.push('depth');
+
+  document.getElementById('share-all-modal').style.display = 'none';
+  const fab = document.getElementById('fab'); if (fab) fab.style.display = 'flex';
+  showToast(`Sharing ${catches.length} catches…`);
 
   let success = 0, failed = 0;
   for (const c of catches) {
     try {
       const shareData = {
-        species: c.species, id: c.id, photo: c.photo,
-        length: c.length, weight: c.weight,
-        lureName: c.lureName, lureType: c.lureType, rod: c.rod, reel: c.reel,
-        location: c.location, datetime: c.datetime,
-        conditions: c.conditions, notes: c.notes
+        species: c.species, id: c.id,
+        photo: includePhoto ? c.photo : null,
+        length: includeSize ? c.length : null,
+        weight: includeSize ? c.weight : null,
+        lureName: includeTackle ? c.lureName : null,
+        lureType: includeTackle ? c.lureType : null,
+        rod: includeTackle ? c.rod : null,
+        reel: includeTackle ? c.reel : null,
+        line: includeTackle ? c.line : null,
+        location: includeLocation ? c.location : null,
+        lat: includeLocation ? c.lat : null,
+        lng: includeLocation ? c.lng : null,
+        datetime: includeDate ? c.datetime : null,
+        conditions: includeWeather ? c.conditions : null,
+        airTemp: includeWeather ? c.airTemp : null,
+        waterTemp: includeWeather ? c.waterTemp : null,
+        wind: includeWeather ? c.wind : null,
+        windDir: includeWeather ? c.windDir : null,
+        moon: c.moon,
+        depth: includeDepth ? c.depth : null,
+        notes: includeNotes ? c.notes : null,
+        spot: includeLocation ? c.spot : null,
+        _hidden: hidden
       };
       await sb.from('group_catches').insert({
         group_id: currentGroup.id,
@@ -2750,7 +2836,6 @@ async function shareAllCatchesToGroup() {
     } catch(e) { failed++; }
   }
 
-  if (btn) { btn.disabled = false; btn.textContent = '📤 Share All My Catches'; }
   showToast(`👥 Shared ${success} catches to ${currentGroup.name}!${failed ? ` (${failed} failed)` : ''}`);
   loadGroupFeed();
 }
