@@ -1113,6 +1113,22 @@
     <div id="board-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:14px;"></div>
   </div>
 
+
+<!-- GROUP CATCH EDIT MODAL -->
+<div id="group-edit-modal" style="display:none; position:fixed; inset:0; z-index:3000; background:rgba(0,0,0,0.8); align-items:flex-end; justify-content:center;">
+  <div style="background:var(--surface); border:1px solid var(--border); border-radius:16px 16px 0 0; width:100%; max-width:520px; padding:24px; max-height:85vh; overflow-y:auto;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+      <h3 style="font-size:1.1rem; font-weight:700;">Edit Group Catch Visibility</h3>
+      <button onclick="document.getElementById('group-edit-modal').style.display='none'; const f=document.getElementById('fab'); if(f) f.style.display='flex';" style="background:none; border:none; color:var(--muted); font-size:1.4rem; cursor:pointer;">✕</button>
+    </div>
+    <p style="font-size:0.82rem; color:var(--muted); margin-bottom:18px;">Choose which fields are visible to the group. Uncheck to hide a field.</p>
+
+    <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;" id="group-edit-fields"></div>
+
+    <button class="btn btn-primary" style="width:100%;" onclick="saveGroupEditVisibility()">Save Changes</button>
+  </div>
+</div>
+
 <!-- POST TO BOARD MODAL -->
 <div id="board-modal" style="display:none; position:fixed; inset:0; z-index:3000; background:rgba(0,0,0,0.75); align-items:center; justify-content:center; padding:20px; overflow-y:auto;">
   <div style="background:var(--surface); border:1px solid var(--border); border-radius:16px; width:100%; max-width:440px; padding:24px;">
@@ -1380,6 +1396,12 @@ async function saveCatchToDb(entry) {
 async function updateCatchInDb(dbId, entry) {
   const { error } = await sb.from('catches').update({ data: entry }).eq('id', dbId);
   if (error) throw error;
+  // Sync to any group catches that came from this catch
+  sb.from('group_catches')
+    .update({ data: entry })
+    .eq('user_id', currentUser.id)
+    .eq('catch_id', entry.id)
+    .then(() => {}).catch(() => {});
 }
 
 async function deleteCatchFromDb(dbId) {
@@ -1531,12 +1553,27 @@ async function saveCatch() {
 
   try {
     if (editingId) {
-      // Update existing catch
-      await updateCatchInDb(editingId, entry);
-      const idx = catches.findIndex(c => String(c._id) === String(editingId));
-      if (idx !== -1) catches[idx] = { ...entry, _id: editingId };
-      editingId = null;
-      showToast('✅ Catch updated!');
+      if (String(editingId).startsWith('GROUP_CATCH_')) {
+        // Updating a group catch directly
+        const rowId = String(editingId).replace('GROUP_CATCH_', '');
+        const { error } = await sb.from('group_catches').update({ data: entry }).eq('id', rowId).eq('user_id', currentUser.id);
+        if (error) throw error;
+        editingId = null;
+        showToast('✅ Group catch updated!');
+        // Go back to groups page
+        setTimeout(() => {
+          showPage('groups', { currentTarget: document.querySelectorAll('.nav-tab')[4] });
+          if (currentGroup) { switchGroupTab('feed'); }
+        }, 500);
+      } else {
+        // Update existing personal catch
+        await updateCatchInDb(editingId, entry);
+        const idx = catches.findIndex(c => String(c._id) === String(editingId));
+        if (idx !== -1) catches[idx] = { ...entry, _id: editingId };
+        editingId = null;
+        editingGroupCatchId = null;
+        showToast('✅ Catch updated!');
+      }
     } else {
       const row = await saveCatchToDb(entry);
       catches.unshift({ ...entry, _id: row.id });
@@ -1638,15 +1675,15 @@ function renderCatches() {
           <h4>${c.species}</h4>
           <div style="font-size:0.82rem; color:var(--muted);">${dateStr} at ${timeStr}${c.location ? ' · ' + c.location : ''}</div>
           <div class="catch-meta">
-            ${c.length ? `<span class="chip highlight">📏 ${c.length} in</span>` : ''}
-            ${c.weight ? `<span class="chip green">⚖️ ${c.weight} lbs</span>` : ''}
-            ${c.conditions ? `<span class="chip">🌤 ${c.conditions}</span>` : ''}
-            ${c.lureName || c.lureType ? `<span class="chip">🎣 ${c.lureName || c.lureType}</span>` : ''}
+            ${(show('length') && c.length) ? `<span class="chip highlight">📏 ${c.length} in</span>` : ''}
+            ${(show('weight') && c.weight) ? `<span class="chip green">⚖️ ${c.weight} lbs</span>` : ''}
+            ${(show('conditions') && c.conditions) ? `<span class="chip">🌤 ${c.conditions}</span>` : ''}
+            ${(show('lureName') && (c.lureName || c.lureType)) ? `<span class="chip">🎣 ${c.lureName || c.lureType}</span>` : ''}
             ${c.rod ? `<span class="chip">🎿 Rod: ${c.rod}</span>` : ''}
             ${c.reel ? `<span class="chip">🔄 Reel: ${c.reel}</span>` : ''}
-            ${c.airTemp ? `<span class="chip">🌡 ${c.airTemp}°F</span>` : ''}
-            ${c.moon ? `<span class="chip">🌙 ${c.moon}</span>` : ''}
-            ${c.depth ? `<span class="chip">↕️ ${c.depth}ft</span>` : ''}
+            ${(show('airTemp') && c.airTemp) ? `<span class="chip">🌡 ${c.airTemp}°F</span>` : ''}
+            ${(show('moon') && c.moon) ? `<span class="chip">🌙 ${c.moon}</span>` : ''}
+            ${(show('depth') && c.depth) ? `<span class="chip">↕️ ${c.depth}ft</span>` : ''}
           </div>
           ${c.notes ? `<div style="font-size:0.82rem; color:var(--muted); margin-top:6px; font-style:italic;">${c.notes}</div>` : ''}
         </div>
@@ -2311,27 +2348,157 @@ async function loadGroupFeed() {
     const memberIdx = currentGroupMembers.findIndex(m => m.user_id === row.user_id);
     const color = MEMBER_COLORS[memberIdx >= 0 ? memberIdx % MEMBER_COLORS.length : 0];
     const member = currentGroupMembers[memberIdx];
-    const date = new Date(c.datetime);
-    const dateStr = date.toLocaleDateString('en-US', { day:'numeric', month:'short', year:'numeric' });
-    const timeStr = date.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
     const isMe = row.user_id === currentUser.id;
-    return `<div class="catch-card" style="margin-bottom:10px; border-left:3px solid ${color};">
-      <div class="catch-photo">${c.photo ? `<img src="${c.photo}" alt="${c.species}">` : '🐟'}</div>
-      <div class="catch-info">
-        <h4>${c.species}</h4>
-        <div style="font-size:0.82rem; color:${color}; font-weight:600; margin-bottom:2px;">${member?.display_name || 'Member'}</div>
-        <div style="font-size:0.82rem; color:var(--muted);">${dateStr} at ${timeStr}${c.location ? ' · ' + c.location : ''}</div>
-        <div class="catch-meta">
+    const hidden = c._hidden || [];
+    const show = (key) => !hidden.includes(key);
+    const date = (show('datetime') && c.datetime) ? new Date(c.datetime) : null;
+    const dateStr = date ? date.toLocaleDateString('en-US', { day:'numeric', month:'short', year:'numeric' }) : '';
+    const timeStr = date ? date.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' }) : '';
+
+    return `<div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:12px; border-left:4px solid ${color};">
+      ${(show('photo') && c.photo) ? `<img src="${c.photo}" onclick="openPhoto(this.src)" style="width:100%; max-height:320px; object-fit:contain; background:#0f1923; cursor:zoom-in; display:block;">` : ''}
+      <div style="padding:14px 16px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
+          <h4 style="font-size:1.05rem; font-weight:700; color:var(--text);">${c.species}</h4>
+          <span style="font-size:0.8rem; font-weight:600; color:${color}; background:${color}18; padding:3px 10px; border-radius:20px; border:1px solid ${color}44;">
+            ${member?.display_name || 'Member'}
+          </span>
+        </div>
+        ${dateStr ? `<div style="font-size:0.82rem; color:var(--muted); margin-bottom:8px;">📅 ${dateStr} at ${timeStr}${c.location ? ' · 📍 ' + c.location : ''}</div>` : ''}
+        <div class="catch-meta" style="margin-bottom:8px;">
           ${c.length ? `<span class="chip highlight">📏 ${c.length} in</span>` : ''}
           ${c.weight ? `<span class="chip green">⚖️ ${c.weight} lbs</span>` : ''}
+          ${c.lureName || c.lureType ? `<span class="chip">🎣 ${c.lureName || c.lureType}</span>` : ''}
+          ${(show('rod') && c.rod) ? `<span class="chip">🎿 ${c.rod}</span>` : ''}
+          ${(show('reel') && c.reel) ? `<span class="chip">🔄 ${c.reel}</span>` : ''}
+          ${(show('line') && c.line) ? `<span class="chip">🪢 ${c.line}</span>` : ''}
+          ${c.depth ? `<span class="chip">↕️ ${c.depth}ft</span>` : ''}
           ${c.conditions ? `<span class="chip">🌤 ${c.conditions}</span>` : ''}
+          ${c.airTemp ? `<span class="chip">🌡 ${c.airTemp}°F</span>` : ''}
+          ${(show('waterTemp') && c.waterTemp) ? `<span class="chip">💧 ${c.waterTemp}°F</span>` : ''}
+          ${(show('wind') && c.wind) ? `<span class="chip">💨 ${c.wind}</span>` : ''}
+          ${c.moon ? `<span class="chip">🌙 ${c.moon}</span>` : ''}
         </div>
-      </div>
-      <div class="catch-actions">
-        ${!isMe ? `<button class="btn btn-primary btn-sm" onclick="saveGroupCatch(${JSON.stringify(c).replace(/'/g,'&#39;')})">Save</button>` : ''}
+        ${(show('spot') && c.spot) ? `<div style="font-size:0.82rem; color:var(--muted); margin-bottom:6px;">📌 ${c.spot}</div>` : ''}
+        ${(show('notes') && c.notes) ? `<div style="font-size:0.82rem; color:var(--muted); font-style:italic; margin-bottom:8px;">${c.notes}</div>` : ''}
+        ${!isMe ? `<button class="btn btn-primary btn-sm" style="width:100%; margin-top:4px;" onclick="saveGroupCatch(${JSON.stringify(c).replace(/\/g,'\\').replace(/'/g,'&#39;').replace(/`/g,'&#96;')})">💾 Save to My Catches</button>` : '<div style="font-size:0.75rem; color:var(--muted); text-align:center; margin-top:4px;">Your catch</div>'}
       </div>
     </div>`;
   }).join('');
+}
+
+let editingGroupCatchId = null;
+let currentGroupEditRowId = null;
+let currentGroupEditData = null;
+
+function openGroupEditModal(rowId, c) {
+  currentGroupEditRowId = rowId;
+  currentGroupEditData = c;
+  document.getElementById('group-edit-modal').style.display = 'flex';
+  const fab = document.getElementById('fab'); if (fab) fab.style.display = 'none';
+
+  const fields = [
+    { key: 'photo', label: '📷 Photo' },
+    { key: 'length', label: '📏 Length' },
+    { key: 'weight', label: '⚖️ Weight' },
+    { key: 'datetime', label: '📅 Date & Time' },
+    { key: 'location', label: '📍 Location' },
+    { key: 'lureName', label: '🎣 Lure / Bait' },
+    { key: 'rod', label: '🎿 Rod' },
+    { key: 'reel', label: '🔄 Reel' },
+    { key: 'line', label: '🪢 Line' },
+    { key: 'depth', label: '↕️ Depth' },
+    { key: 'conditions', label: '🌤 Weather Conditions' },
+    { key: 'airTemp', label: '🌡 Air Temp' },
+    { key: 'waterTemp', label: '💧 Water Temp' },
+    { key: 'wind', label: '💨 Wind' },
+    { key: 'moon', label: '🌙 Moon Phase' },
+    { key: 'notes', label: '📝 Notes' },
+    { key: 'spot', label: '📌 Spot Notes' },
+  ];
+
+  const container = document.getElementById('group-edit-fields');
+  container.innerHTML = fields.map(f => {
+    const hasValue = c[f.key] !== null && c[f.key] !== undefined && c[f.key] !== '';
+    const hidden = c._hidden?.includes(f.key);
+    return `<label style="display:flex; align-items:center; gap:12px; padding:10px 12px; background:var(--surface2); border-radius:8px; cursor:pointer;">
+      <input type="checkbox" data-field="${f.key}" ${!hidden ? 'checked' : ''} style="width:16px; height:16px; cursor:pointer;">
+      <span style="font-size:0.9rem; color:${hasValue ? 'var(--text)' : 'var(--muted)'};">${f.label}</span>
+      ${!hasValue ? '<span style="font-size:0.75rem; color:var(--muted); margin-left:auto;">No data</span>' : ''}
+      ${hidden ? '<span style="font-size:0.75rem; color:var(--danger); margin-left:auto;">Hidden</span>' : ''}
+    </label>`;
+  }).join('');
+}
+
+async function saveGroupEditVisibility() {
+  if (!currentGroupEditRowId || !currentGroupEditData) return;
+
+  const checkboxes = document.querySelectorAll('#group-edit-fields input[type=checkbox]');
+  const hidden = [];
+  checkboxes.forEach(cb => { if (!cb.checked) hidden.push(cb.dataset.field); });
+
+  const updatedData = { ...currentGroupEditData, _hidden: hidden };
+
+  try {
+    const { error } = await sb.from('group_catches')
+      .update({ data: updatedData })
+      .eq('id', currentGroupEditRowId)
+      .eq('user_id', currentUser.id);
+    if (error) throw error;
+
+    document.getElementById('group-edit-modal').style.display = 'none';
+    const fab = document.getElementById('fab'); if (fab) fab.style.display = 'flex';
+    showToast('✅ Catch visibility updated!');
+    loadGroupFeed();
+  } catch(e) {
+    showToast('Error saving: ' + e.message, true);
+  }
+}
+
+function editGroupCatch(groupCatchRowId, c) {
+  // Find matching personal catch by catch id
+  const personalCatch = catches.find(pc => String(pc.id) === String(c.id));
+  if (personalCatch) {
+    // Edit the personal catch — changes will sync back to group
+    editingGroupCatchId = groupCatchRowId;
+    editCatch(personalCatch._id);
+    showToast('✏️ Editing — changes will sync to the group');
+  } else {
+    // No personal catch found — edit group catch directly
+    editingGroupCatchId = groupCatchRowId;
+    editGroupCatchDirect(groupCatchRowId, c);
+  }
+}
+
+function editGroupCatchDirect(rowId, c) {
+  // Pre-fill form with group catch data
+  const set = (elId, val) => { const el = document.getElementById(elId); if (el && val !== null && val !== undefined) el.value = val; };
+  set('f-species', c.species); set('f-length', c.length); set('f-weight', c.weight);
+  set('f-datetime', c.datetime ? c.datetime.slice(0,16) : '');
+  set('f-location', c.location); set('f-lat', c.lat); set('f-lng', c.lng);
+  set('f-spot', c.spot); set('f-lure-type', c.lureType); set('f-lure-name', c.lureName);
+  set('f-rod', c.rod); set('f-reel', c.reel); set('f-line', c.line);
+  set('f-depth', c.depth); set('f-air-temp', c.airTemp); set('f-water-temp', c.waterTemp);
+  set('f-conditions', c.conditions); set('f-wind', c.wind); set('f-wind-dir', c.windDir);
+  set('f-moon', c.moon); set('f-notes', c.notes);
+  if (c.photo) {
+    photoBase64 = c.photo; photoFile = null;
+    const preview = document.getElementById('photo-preview');
+    preview.src = c.photo; preview.style.display = 'block';
+    document.getElementById('photo-placeholder').style.display = 'none';
+  }
+  // Override save to update group catch
+  editingId = 'GROUP_CATCH_' + rowId;
+  const btn = document.getElementById('save-btn');
+  btn.textContent = '💾 Save Changes';
+  btn.style.background = 'var(--accent2)';
+  document.getElementById('cancel-edit-btn').style.display = 'inline-flex';
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-log').classList.add('active');
+  document.querySelector('.nav-tab').classList.add('active');
+  window.scrollTo(0,0);
+  showToast('✏️ Editing group catch');
 }
 
 async function saveGroupCatch(c) {
