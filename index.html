@@ -1468,6 +1468,16 @@ async function initApp(session) {
   document.getElementById('loading').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   document.getElementById('fab').style.display = 'none';
+
+  // Hide FAB when scrolled near the bottom of log page (save button area)
+  window.addEventListener('scroll', function() {
+    const fab = document.getElementById('fab');
+    if (!fab || fab.style.display === 'none') return;
+    const activePage = document.querySelector('.page.active');
+    if (activePage?.id === 'page-log') { fab.style.display = 'none'; return; }
+    const nearBottom = document.documentElement.scrollHeight - window.scrollY - window.innerHeight < 120;
+    fab.style.display = nearBottom ? 'none' : 'flex';
+  }, { passive: true });
   document.getElementById('f-datetime').value = '';
   renderStats();
   renderCatches();
