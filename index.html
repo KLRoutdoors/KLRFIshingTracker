@@ -900,6 +900,49 @@
 
 </div>
 
+  <!-- SOLUNAR PAGE -->
+  <div id="page-solunar" class="page">
+    <div style="margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+      <div>
+        <h2 style="font-size:1.3rem; font-weight:700;">🔥 Bite Times</h2>
+        <p style="color:var(--muted); font-size:0.9rem; margin-top:4px;" id="solunar-location-label">Calculating for your location…</p>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="refreshSolunar()">📡 Refresh Location</button>
+    </div>
+
+    <!-- TODAY DIAL -->
+    <div class="chart-card" style="margin-bottom:16px; text-align:center;">
+      <h3 style="margin-bottom:16px;">Today's Activity — <span id="solunar-date"></span></h3>
+      <div style="display:flex; align-items:center; justify-content:center; gap:32px; flex-wrap:wrap;">
+        <div style="position:relative;">
+          <canvas id="solunar-dial" width="260" height="260"></canvas>
+          <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; pointer-events:none;">
+            <div id="solunar-time-display" style="font-size:1.3rem; font-weight:800; color:var(--text); line-height:1;"></div>
+            <div id="solunar-period-label" style="font-size:0.72rem; color:var(--accent); margin-top:4px; font-weight:600;"></div>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:10px; min-width:180px;">
+          <div style="background:var(--surface2); border-radius:10px; padding:12px 16px;">
+            <div style="font-size:0.75rem; color:var(--muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.06em;">Today's Rating</div>
+            <div id="solunar-rating" style="font-size:1.6rem; font-weight:800;"></div>
+          </div>
+          <div style="background:var(--surface2); border-radius:10px; padding:12px 16px;">
+            <div style="font-size:0.75rem; color:var(--muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.06em;">Next Peak</div>
+            <div id="solunar-next-peak" style="font-size:0.95rem; font-weight:700; color:var(--accent2);"></div>
+            <div id="solunar-next-countdown" style="font-size:0.8rem; color:var(--muted); margin-top:2px;"></div>
+          </div>
+          <div id="solunar-periods-today" style="display:flex; flex-direction:column; gap:6px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 7 DAY FORECAST -->
+    <div class="chart-card">
+      <h3 style="margin-bottom:14px;">7-Day Solunar Forecast</h3>
+      <div id="solunar-7day" style="display:flex; flex-direction:column; gap:8px;"></div>
+    </div>
+  </div>
+
 <!-- CREATE GROUP MODAL -->
 <div id="create-group-modal" style="display:none; position:fixed; inset:0; z-index:2000; background:rgba(0,0,0,0.75); align-items:center; justify-content:center; padding:20px;">
   <div style="background:var(--surface); border:1px solid var(--border); border-radius:16px; width:100%; max-width:420px; padding:24px;">
