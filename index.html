@@ -3051,13 +3051,7 @@ function getActivityLabel(pct) {
 
 function doRenderSolunar() {
   if (!solunarLat) return;
-  // Force canvas to have explicit pixel dimensions before drawing
-  const barsCanvas = document.getElementById('solunar-bars');
-  if (barsCanvas && barsCanvas.offsetWidth > 0) {
-    const dpr = window.devicePixelRatio || 1;
-    barsCanvas.width = barsCanvas.offsetWidth * dpr;
-    barsCanvas.height = barsCanvas.offsetHeight * dpr;
-  }
+
   const today = new Date();
   const target = new Date(today);
   target.setDate(target.getDate() + solunarDayOffset);
@@ -3073,7 +3067,6 @@ function doRenderSolunar() {
   if (pctEl) {
     const startVal = solunarCurrentPct;
     const endVal = data.dayRating;
-    if (barAnimFrame) cancelAnimationFrame(barAnimFrame);
     const dur = 500;
     const startTime = performance.now();
     function countUp(ts) {
@@ -3181,8 +3174,7 @@ function refreshSolunar() {
 window.addEventListener('resize', () => {
   if (window._lastBarsData) {
     const { hours, major, minor } = window._lastBarsData;
-    barCurrentHeights = null;
-    animateBars(hours, major, minor);
+    drawActivityBars(hours, major, minor);
   }
 });
 
