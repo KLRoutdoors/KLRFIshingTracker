@@ -901,46 +901,76 @@
 </div>
 
   <!-- SOLUNAR PAGE -->
-  <div id="page-solunar" class="page">
-    <div style="margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
-      <div>
-        <h2 style="font-size:1.3rem; font-weight:700;">🔥 Bite Times</h2>
-        <p style="color:var(--muted); font-size:0.9rem; margin-top:4px;" id="solunar-location-label">Calculating for your location…</p>
-      </div>
-      <button class="btn btn-primary btn-sm" onclick="refreshSolunar()">📡 Refresh Location</button>
+  <div id="page-solunar" class="page" style="padding:0; background:linear-gradient(180deg, #0d4f6b 0%, #0a3a52 40%, #071f2e 100%); min-height:100vh; color:#fff;">
+
+    <!-- Location header -->
+    <div style="text-align:center; padding:16px 16px 8px;">
+      <div id="solunar-location-label" style="font-size:1rem; font-weight:600; color:rgba(255,255,255,0.9); letter-spacing:0.05em;">📍 Getting location…</div>
     </div>
 
-    <!-- TODAY DIAL -->
-    <div class="chart-card" style="margin-bottom:16px; text-align:center;">
-      <h3 style="margin-bottom:16px;">Today's Activity — <span id="solunar-date"></span></h3>
-      <div style="display:flex; align-items:center; justify-content:center; gap:32px; flex-wrap:wrap;">
-        <div style="position:relative;">
-          <canvas id="solunar-dial" width="260" height="260"></canvas>
-          <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; pointer-events:none;">
-            <div id="solunar-time-display" style="font-size:1.1rem; font-weight:800; color:var(--text); line-height:1; white-space:nowrap; font-variant-numeric:tabular-nums; letter-spacing:0.02em; font-family:monospace;"></div>
-            <div id="solunar-period-label" style="font-size:0.72rem; color:var(--accent); margin-top:4px; font-weight:600;"></div>
+    <!-- Day rating dial -->
+    <div style="text-align:center; padding:8px 0 4px; position:relative;">
+      <div style="display:flex; align-items:center; justify-content:center; gap:32px;">
+        <div style="text-align:right;">
+          <div style="font-size:0.7rem; letter-spacing:0.12em; color:rgba(255,255,255,0.6); margin-bottom:4px;">DAY RATING</div>
+        </div>
+        <div style="position:relative; width:120px; height:120px;">
+          <canvas id="solunar-dial" width="120" height="120"></canvas>
+          <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+            <div id="solunar-pct" style="font-size:2rem; font-weight:800; color:#fff; line-height:1;">--</div>
+            <div style="font-size:0.75rem; color:rgba(255,255,255,0.6);">%</div>
           </div>
         </div>
-        <div style="display:flex; flex-direction:column; gap:10px; min-width:180px;">
-          <div style="background:var(--surface2); border-radius:10px; padding:12px 16px;">
-            <div style="font-size:0.75rem; color:var(--muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.06em;">Today's Rating</div>
-            <div id="solunar-rating" style="font-size:1.6rem; font-weight:800;"></div>
-          </div>
-          <div style="background:var(--surface2); border-radius:10px; padding:12px 16px;">
-            <div style="font-size:0.75rem; color:var(--muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.06em;">Next Peak</div>
-            <div id="solunar-next-peak" style="font-size:0.95rem; font-weight:700; color:var(--accent2);"></div>
-            <div id="solunar-next-countdown" style="font-size:0.8rem; color:var(--muted); margin-top:2px;"></div>
-          </div>
-          <div id="solunar-periods-today" style="display:flex; flex-direction:column; gap:6px;"></div>
+        <div style="text-align:left;">
+          <div id="solunar-activity-label" style="font-size:0.7rem; letter-spacing:0.12em; color:rgba(255,255,255,0.6);"></div>
         </div>
       </div>
     </div>
 
-    <!-- 7 DAY FORECAST -->
-    <div class="chart-card">
-      <h3 style="margin-bottom:14px;">7-Day Solunar Forecast</h3>
-      <div id="solunar-7day" style="display:flex; flex-direction:column; gap:8px;"></div>
+    <!-- Day selector -->
+    <div style="display:flex; align-items:center; justify-content:center; gap:0; padding:8px 0 12px; position:relative;">
+      <button onclick="solunarChangeDay(-1)" style="background:none; border:none; color:rgba(255,255,255,0.7); font-size:1.4rem; cursor:pointer; padding:8px 12px;">‹</button>
+      <div id="solunar-day-selector" style="display:flex; gap:0; align-items:flex-end; overflow:hidden;"></div>
+      <button onclick="solunarChangeDay(1)" style="background:none; border:none; color:rgba(255,255,255,0.7); font-size:1.4rem; cursor:pointer; padding:8px 12px;">›</button>
     </div>
+
+    <!-- Activity bar chart -->
+    <div style="padding:0 16px 8px;">
+      <canvas id="solunar-bars" height="110" style="width:100%;"></canvas>
+      <div style="display:flex; justify-content:space-between; padding:4px 2px 0; font-size:0.7rem; color:rgba(255,255,255,0.5);">
+        <span>12</span><span>3am</span><span>6am</span><span>9am</span><span>12</span><span>3pm</span><span>6pm</span><span>9pm</span><span>12</span>
+      </div>
+    </div>
+
+    <!-- Major / Minor times -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; margin:8px 12px; border:1px solid rgba(255,255,255,0.15); border-radius:12px; overflow:hidden;">
+      <div style="padding:14px 12px; border-right:1px solid rgba(255,255,255,0.15);">
+        <div id="solunar-major-times" style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;"></div>
+        <div style="font-size:0.65rem; letter-spacing:0.12em; color:rgba(255,255,255,0.5);">MAJOR TIME</div>
+      </div>
+      <div style="padding:14px 12px;">
+        <div id="solunar-minor-times" style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;"></div>
+        <div style="font-size:0.65rem; letter-spacing:0.12em; color:rgba(255,255,255,0.5);">MINOR TIME</div>
+      </div>
+    </div>
+
+    <!-- Sun / Moon row -->
+    <div style="display:grid; grid-template-columns:1fr auto 1fr; margin:8px 12px 20px; border:1px solid rgba(255,255,255,0.15); border-radius:12px; overflow:hidden; align-items:center;">
+      <!-- Sun times -->
+      <div style="padding:14px 12px;">
+        <div id="solunar-sun-times" style="display:flex; flex-direction:column; gap:6px;"></div>
+      </div>
+      <!-- Moon phase -->
+      <div style="padding:14px; text-align:center; border-left:1px solid rgba(255,255,255,0.15); border-right:1px solid rgba(255,255,255,0.15);">
+        <canvas id="solunar-moon-icon" width="54" height="54"></canvas>
+        <div id="solunar-moon-phase-label" style="font-size:0.65rem; letter-spacing:0.08em; color:rgba(255,255,255,0.6); margin-top:4px; text-transform:uppercase;"></div>
+      </div>
+      <!-- Moon rise/set -->
+      <div style="padding:14px 12px;">
+        <div id="solunar-moon-times" style="display:flex; flex-direction:column; gap:6px;"></div>
+      </div>
+    </div>
+
   </div>
 
 <!-- CREATE GROUP MODAL -->
@@ -2708,7 +2738,7 @@ async function deleteComment(commentId) {
 
 
 // ── SOLUNAR CALCULATIONS ──────────────────────────────────────────────────────
-let solunarLat = null, solunarLng = null, solunarTimer = null, solunarDialTimer = null;
+let solunarLat = null, solunarLng = null, solunarDayOffset = 0, solunarDialTimer = null;
 
 function toRad(d) { return d * Math.PI / 180; }
 function toDeg(r) { return r * 180 / Math.PI; }
@@ -2727,11 +2757,12 @@ function getSunTimes(date, lat, lng) {
   if (Math.abs(cosH) > 1) return null;
   const H = toDeg(Math.acos(cosH)) / 15;
   const noon = (RA - lng / 15 + 12) % 24;
-  return { rise: ((noon - H) + 24) % 24, set: ((noon + H) + 24) % 24, noon: noon % 24 };
+  const tzOffset = -new Date().getTimezoneOffset() / 60;
+  const toLocal = h => ((h + tzOffset) % 24 + 24) % 24;
+  return { rise: toLocal((noon - H + 24) % 24), set: toLocal((noon + H) % 24), noon: toLocal(noon % 24) };
 }
 
 function getMoonTimes(date, lat, lng) {
-  // Simplified moon position calculation
   const JD = date / 86400000 + 2440587.5;
   const d = JD - 2451545.0;
   const L = (218.316 + 13.176396 * d) % 360;
@@ -2743,411 +2774,331 @@ function getMoonTimes(date, lat, lng) {
   const RA = toDeg(Math.atan2(Math.sin(lon) * Math.cos(toRad(23.439)) - Math.tan(lat2) * Math.sin(toRad(23.439)), Math.cos(lon))) / 15;
   const cosH = (Math.sin(toRad(0.125)) - Math.sin(toRad(lat)) * Math.sin(dec)) /
                (Math.cos(toRad(lat)) * Math.cos(dec));
+  const tzOffset = -new Date().getTimezoneOffset() / 60;
+  const toLocal = h => ((h + tzOffset) % 24 + 24) % 24;
   if (Math.abs(cosH) > 1) {
-    const transit = ((RA - lng / 15) % 24 + 24) % 24;
-    return { overhead: transit, underfoot: (transit + 12) % 24, rise: null, set: null };
+    const t = ((RA - lng / 15) % 24 + 24) % 24;
+    return { overhead: toLocal(t), underfoot: toLocal((t + 12) % 24), rise: null, set: null };
   }
   const H = toDeg(Math.acos(cosH)) / 15;
-  const transit = ((RA - lng / 15) % 24 + 24) % 24;
-  return {
-    overhead: transit,
-    underfoot: (transit + 12) % 24,
-    rise: ((transit - H) + 24) % 24,
-    set: ((transit + H) + 24) % 24
-  };
+  const t = ((RA - lng / 15) % 24 + 24) % 24;
+  return { overhead: toLocal(t), underfoot: toLocal((t + 12) % 24), rise: toLocal((t - H + 24) % 24), set: toLocal((t + H) % 24) };
 }
 
-function getMoonPhaseRating(date) {
+function getMoonPhaseInfo(date) {
   const known = new Date(2000, 0, 6).getTime();
   const synodic = 29.530588853 * 86400000;
   const phase = ((date - known) % synodic + synodic) % synodic / synodic;
-  // Full and new moon = best (1.0), quarters = moderate (0.6)
-  const dist = Math.min(phase, 1 - phase) * 2; // 0=new/full, 1=quarter
-  return 1 - dist * 0.4;
+  const phases = ['New Moon','Waxing Crescent','First Quarter','Waxing Gibbous','Full Moon','Waning Gibbous','Last Quarter','Waning Crescent'];
+  const idx = Math.floor(phase * 8) % 8;
+  const dist = Math.min(phase, 1 - phase) * 2;
+  const rating = Math.round((1 - dist * 0.4) * 100);
+  return { name: phases[idx], phase, rating };
 }
 
-function calcSolunar(date, lat, lng) {
+function calcSolunarHourly(date, lat, lng) {
   const moon = getMoonTimes(date, lat, lng);
   const sun = getSunTimes(date, lat, lng);
-  const phaseRating = getMoonPhaseRating(date);
+  const phaseInfo = getMoonPhaseInfo(date);
 
-  const periods = [];
+  // Build activity curve — 24 hourly values 0-100
+  const hours = Array(24).fill(0).map((_, h) => {
+    let score = 20; // baseline
+    const peaks = [
+      { t: moon.overhead, strength: 100, width: 2 },
+      { t: moon.underfoot, strength: 100, width: 2 },
+      { t: moon.rise, strength: 60, width: 1 },
+      { t: moon.set, strength: 60, width: 1 },
+    ].filter(p => p.t !== null);
+    if (sun) {
+      peaks.push({ t: sun.rise, strength: 40, width: 0.75 });
+      peaks.push({ t: sun.set, strength: 40, width: 0.75 });
+    }
+    peaks.forEach(p => {
+      let diff = Math.abs(h - p.t);
+      if (diff > 12) diff = 24 - diff;
+      if (diff < p.width * 2) {
+        score += p.strength * Math.max(0, 1 - diff / (p.width * 2));
+      }
+    });
+    return Math.min(100, Math.round(score * (phaseInfo.rating / 100)));
+  });
 
-  // Major periods: moon overhead and underfoot (2 hour windows)
-  periods.push({ start: (moon.overhead - 1 + 24) % 24, end: (moon.overhead + 1) % 24, type: 'major', label: '🌙 Moon Overhead' });
-  periods.push({ start: (moon.underfoot - 1 + 24) % 24, end: (moon.underfoot + 1) % 24, type: 'major', label: '🌑 Moon Underfoot' });
+  const major = [
+    { start: (moon.overhead - 1 + 24) % 24, end: (moon.overhead + 1) % 24 },
+    { start: (moon.underfoot - 1 + 24) % 24, end: (moon.underfoot + 1) % 24 },
+  ];
+  const minor = [];
+  if (moon.rise !== null) minor.push({ start: (moon.rise - 0.5 + 24) % 24, end: (moon.rise + 0.5) % 24 });
+  if (moon.set !== null) minor.push({ start: (moon.set - 0.5 + 24) % 24, end: (moon.set + 0.5) % 24 });
 
-  // Minor periods: moon rise and set (1 hour windows)
-  if (moon.rise !== null) {
-    periods.push({ start: (moon.rise - 0.5 + 24) % 24, end: (moon.rise + 0.5) % 24, type: 'minor', label: '🌒 Moon Rise' });
-  }
-  if (moon.set !== null) {
-    periods.push({ start: (moon.set - 0.5 + 24) % 24, end: (moon.set + 0.5) % 24, type: 'minor', label: '🌘 Moon Set' });
-  }
+  const dayRating = Math.round(phaseInfo.rating * (hours.reduce((a,b) => a+b, 0) / (hours.length * 100)));
 
-  // Sun times — exact points, not windows
-  if (sun) {
-    periods.push({ start: sun.rise, end: sun.rise, type: 'bonus', label: '🌅 Sunrise', exact: true });
-    periods.push({ start: sun.set, end: sun.set, type: 'bonus', label: '🌇 Sunset', exact: true });
-  }
-
-  // Overall day rating based on moon phase and period overlap
-  const majorCount = periods.filter(p => p.type === 'major').length;
-  const rating = Math.min(5, Math.round(phaseRating * 5));
-
-  return { periods, rating, moon, sun };
+  return { hours, major, minor, sun, moon, phaseInfo, dayRating: Math.min(100, Math.max(10, dayRating)) };
 }
 
 function formatHour(h) {
   const hh = Math.floor(((h % 24) + 24) % 24);
-  const mm = Math.round((h - Math.floor(h)) * 60);
-  const ampm = hh >= 12 ? 'PM' : 'AM';
-  const h12 = hh % 12 || 12;
-  return `${h12}:${String(mm).padStart(2,'0')} ${ampm}`;
+  const mm = String(Math.round((h - Math.floor(h)) * 60)).padStart(2,'0');
+  const ampm = hh >= 12 ? 'AM' : 'AM';
+  const h12 = String(hh % 12 || 12).padStart(2,'0');
+  return `${h12}:${mm} ${hh >= 12 ? 'PM' : 'AM'}`;
 }
 
-function drawSolunarDial(periods, currentHour) {
+function drawRatingDial(pct) {
   const canvas = document.getElementById('solunar-dial');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
-  const cx = W / 2, cy = H / 2, r = W / 2 - 14;
+  const cx = W/2, cy = H/2, r = W/2 - 8;
   ctx.clearRect(0, 0, W, H);
 
-  // Background circle
+  const startAngle = Math.PI * 0.75;
+  const endAngle = Math.PI * 2.25;
+
+  // Background arc
   ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.fillStyle = '#0f1923';
-  ctx.fill();
-  ctx.strokeStyle = '#2a4a63';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-
-  // Hour tick marks
-  for (let i = 0; i < 24; i++) {
-    const angle = (i / 24) * Math.PI * 2 - Math.PI / 2;
-    const inner = i % 6 === 0 ? r - 18 : i % 3 === 0 ? r - 12 : r - 7;
-    ctx.beginPath();
-    ctx.moveTo(cx + Math.cos(angle) * inner, cy + Math.sin(angle) * inner);
-    ctx.lineTo(cx + Math.cos(angle) * (r - 3), cy + Math.sin(angle) * (r - 3));
-    ctx.strokeStyle = i % 6 === 0 ? '#7a9bb5' : '#2a4a63';
-    ctx.lineWidth = i % 6 === 0 ? 2 : 1;
-    ctx.stroke();
-  }
-
-  // Hour labels (6, 12, 18, 0)
-  const labels = [['12am', 0], ['6am', 6], ['12pm', 12], ['6pm', 18]];
-  ctx.font = 'bold 10px -apple-system, sans-serif';
-  ctx.fillStyle = '#7a9bb5';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  labels.forEach(([label, h]) => {
-    const angle = (h / 24) * Math.PI * 2 - Math.PI / 2;
-    const lr = r - 28;
-    ctx.fillText(label, cx + Math.cos(angle) * lr, cy + Math.sin(angle) * lr);
-  });
-
-  // Draw period arcs — major/minor as thick filled wedge sectors
-  periods.forEach(p => {
-    if (p.exact) {
-      // Sunrise/sunset as a dot marker on the dial edge
-      const angle = (p.start / 24) * Math.PI * 2 - Math.PI / 2;
-      const color = p.label.includes('Sunrise') ? '#ffb347' : '#ff7c2a';
-      const dotR = r - 8;
-      ctx.beginPath();
-      ctx.arc(cx + Math.cos(angle) * dotR, cy + Math.sin(angle) * dotR, 5, 0, Math.PI * 2);
-      ctx.fillStyle = color;
-      ctx.fill();
-      return;
-    }
-    const startAngle = (p.start / 24) * Math.PI * 2 - Math.PI / 2;
-    let endAngle = (p.end / 24) * Math.PI * 2 - Math.PI / 2;
-    if (p.end < p.start) endAngle += Math.PI * 2;
-    const color = p.type === 'major' ? '#3b9eff' : '#00c896';
-    const innerR = p.type === 'major' ? r * 0.35 : r * 0.55;
-    const outerR = p.type === 'major' ? r - 20 : r - 20;
-    // Draw filled wedge sector
-    ctx.beginPath();
-    ctx.arc(cx, cy, outerR, startAngle, endAngle);
-    ctx.arc(cx, cy, innerR, endAngle, startAngle, true);
-    ctx.closePath();
-    ctx.fillStyle = color + '55';
-    ctx.fill();
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
-    ctx.stroke();
-  });
-
-  // Night shading (approx 9pm-5am)
-  const nightStart = (21 / 24) * Math.PI * 2 - Math.PI / 2;
-  const nightEnd = (5 / 24) * Math.PI * 2 - Math.PI / 2 + Math.PI * 2;
-  ctx.beginPath();
-  ctx.arc(cx, cy, r - 62, nightStart, nightEnd);
-  ctx.strokeStyle = 'rgba(15,25,35,0.5)';
-  ctx.lineWidth = 6;
-  ctx.stroke();
-
-  // Current time needle
-  const nowAngle = (currentHour / 24) * Math.PI * 2 - Math.PI / 2;
-  ctx.beginPath();
-  ctx.moveTo(cx, cy);
-  ctx.lineTo(cx + Math.cos(nowAngle) * (r - 8), cy + Math.sin(nowAngle) * (r - 8));
-  ctx.strokeStyle = '#ff5c5c';
-  ctx.lineWidth = 2.5;
+  ctx.arc(cx, cy, r, startAngle, endAngle);
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 8;
   ctx.lineCap = 'round';
   ctx.stroke();
 
-  // Center dot
+  // Filled arc
+  const fillEnd = startAngle + (pct / 100) * (endAngle - startAngle);
+  const color = pct >= 70 ? '#4dd9ff' : pct >= 40 ? '#4db8ff' : '#4d8aff';
   ctx.beginPath();
-  ctx.arc(cx, cy, 5, 0, Math.PI * 2);
-  ctx.fillStyle = '#ff5c5c';
-  ctx.fill();
+  ctx.arc(cx, cy, r, startAngle, fillEnd);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 8;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+}
 
-  // Legend
-  const legendY = H - 10;
-  const items = [['Major', '#3b9eff'], ['Minor', '#00c896'], ['Sun', '#ffb347']];
-  const totalW = items.length * 80;
-  let lx = cx - totalW / 2 + 20;
-  ctx.font = '9px -apple-system, sans-serif';
-  items.forEach(([label, color]) => {
+function drawMoonPhase(phase) {
+  const canvas = document.getElementById('solunar-moon-icon');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const cx = W/2, cy = H/2, r = W/2 - 4;
+  ctx.clearRect(0, 0, W, H);
+
+  const p = phase; // 0=new, 0.5=full
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Draw illuminated portion
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.clip();
+
+  if (p < 0.5) {
+    // Waxing
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(100,200,255,0.7)';
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, Math.PI/2, -Math.PI/2, true);
+    const kx = r * Math.cos(Math.PI * (1 - p * 2));
+    ctx.bezierCurveTo(cx + kx, cy - r, cx + kx, cy + r, cx, cy + r);
+    ctx.fill();
+  } else {
+    // Waning
+    ctx.fillStyle = 'rgba(100,200,255,0.7)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, Math.PI/2, -Math.PI/2);
+    const kx = r * Math.cos(Math.PI * ((p - 0.5) * 2));
+    ctx.bezierCurveTo(cx - kx, cy - r, cx - kx, cy + r, cx, cy + r);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawActivityBars(hours, major, minor) {
+  const canvas = document.getElementById('solunar-bars');
+  if (!canvas) return;
+  canvas.width = canvas.offsetWidth * window.devicePixelRatio || canvas.offsetWidth;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height * (window.devicePixelRatio || 1);
+  ctx.clearRect(0, 0, W, H);
+
+  const barW = W / 24;
+  const maxH = H - 4;
+
+  hours.forEach((val, i) => {
+    const bH = (val / 100) * maxH;
+    const x = i * barW;
+    const y = H - bH;
+
+    // Check if in major/minor period
+    let color = 'rgba(77,185,255,0.4)';
+    major.forEach(p => {
+      let s = p.start, e = p.end;
+      if (e < s) { if (i >= s || i < e) color = 'rgba(77,185,255,0.9)'; }
+      else if (i >= s && i < e) color = 'rgba(77,185,255,0.9)';
+    });
+    minor.forEach(p => {
+      let s = p.start, e = p.end;
+      if (e < s) { if (i >= s || i < e) color = 'rgba(77,220,180,0.85)'; }
+      else if (i >= s && i < e) color = 'rgba(77,220,180,0.85)';
+    });
+
     ctx.fillStyle = color;
-    ctx.fillRect(lx - 16, legendY - 5, 10, 4);
-    ctx.fillStyle = '#7a9bb5';
-    ctx.textAlign = 'left';
-    ctx.fillText(label, lx - 4, legendY - 2);
-    lx += 80;
+    ctx.beginPath();
+    ctx.roundRect(x + 1, y, barW - 2, bH, 2);
+    ctx.fill();
   });
-}
 
-function getStars(rating) {
-  const full = '<span style="color:#f5e642;">★</span>';
-  const empty = '<span style="color:#2a4a63;">★</span>';
-  return full.repeat(rating) + empty.repeat(5 - rating);
-}
-
-function getActivityLabel(rating) {
-  if (rating >= 5) return { text: 'Excellent', color: '#00c896' };
-  if (rating >= 4) return { text: 'Very Good', color: '#3b9eff' };
-  if (rating >= 3) return { text: 'Good', color: '#ffb347' };
-  if (rating >= 2) return { text: 'Fair', color: '#7a9bb5' };
-  return { text: 'Poor', color: '#ff5c5c' };
-}
-
-function isInPeriod(hour, periods) {
-  for (const p of periods) {
-    if (p.end < p.start) {
-      if (hour >= p.start || hour < p.end) return p;
-    } else {
-      if (hour >= p.start && hour < p.end) return p;
-    }
-  }
-  return null;
-}
-
-function getNextPeak(hour, periods) {
-  const all = [...periods].sort((a, b) => {
-    const as = a.start < hour ? a.start + 24 : a.start;
-    const bs = b.start < hour ? b.start + 24 : b.start;
-    return as - bs;
-  });
-  const next = all.find(p => {
-    const s = p.start < hour ? p.start + 24 : p.start;
-    return s > hour;
-  });
-  return next || all[0];
-}
-
-function hoursUntil(targetHour, currentHour) {
-  let diff = targetHour - currentHour;
-  if (diff < 0) diff += 24;
-  const h = Math.floor(diff);
-  const m = Math.round((diff - h) * 60);
-  if (h === 0) return `${m}m away`;
-  if (m === 0) return `${h}h away`;
-  return `${h}h ${m}m away`;
-}
-
-function updateSolunarDial() {
-  if (!solunarLat) return;
-  const now = new Date();
-  const currentHour = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
-  const data = calcSolunar(now, solunarLat, solunarLng);
-
-  drawSolunarDial(data.periods, currentHour);
-
-  // Update time display
-  const timeEl = document.getElementById('solunar-time-display');
-  const periodEl = document.getElementById('solunar-period-label');
-  if (timeEl) {
-    const h = now.getHours() % 12 || 12;
-    const m = String(now.getMinutes()).padStart(2,'0');
-    const s = String(now.getSeconds()).padStart(2,'0');
-    const ap = now.getHours() >= 12 ? 'PM' : 'AM';
-    timeEl.textContent = `${String(h).padStart(2,'0')}:${m}:${s} ${ap}`;
-  }
-  const inPeriod = isInPeriod(currentHour, data.periods);
-  if (periodEl) {
-    if (inPeriod) {
-      periodEl.textContent = inPeriod.type === 'major' ? '🔥 PEAK TIME' : inPeriod.type === 'minor' ? '✅ Active Period' : '🌅 Sun Period';
-      periodEl.style.color = inPeriod.type === 'major' ? '#ff5c5c' : inPeriod.type === 'minor' ? '#00c896' : '#ffb347';
-    } else {
-      periodEl.textContent = '';
-    }
-  }
-
-  // Next peak countdown
-  const next = getNextPeak(currentHour, data.periods.filter(p => p.type !== 'bonus'));
-  const nextEl = document.getElementById('solunar-next-peak');
-  const countEl = document.getElementById('solunar-next-countdown');
-  if (nextEl && next) {
-    nextEl.textContent = `${next.label} at ${formatHour(next.start)}`;
-    if (countEl) countEl.textContent = hoursUntil(next.start, currentHour);
+  // Current time line (only for today)
+  if (solunarDayOffset === 0) {
+    const now = new Date();
+    const nowH = now.getHours() + now.getMinutes() / 60;
+    const x = (nowH / 24) * W;
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, H);
+    ctx.strokeStyle = 'rgba(255,100,100,0.8)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
   }
 }
 
-function renderSolunarDay(date, lat, lng, isToday) {
-  const data = calcSolunar(date, lat, lng);
-  const dayLabel = isToday ? 'Today' : date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-  const activity = getActivityLabel(data.rating);
-  const majorPeriods = data.periods.filter(p => p.type === 'major');
-  const minorPeriods = data.periods.filter(p => p.type === 'minor');
-
-  return `
-    <div style="background:var(--surface2); border:1px solid var(--border); border-radius:12px; overflow:hidden;">
-      <div style="padding:12px 16px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; gap:12px;"
-           onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'">
-        <div style="display:flex; align-items:center; gap:12px; flex:1;">
-          <div style="font-weight:700; font-size:0.9rem; min-width:90px;">${dayLabel}</div>
-          <div style="font-size:1rem; letter-spacing:1px;">${getStars(data.rating)}</div>
-          <div style="font-size:0.8rem; font-weight:600; color:${activity.color};">${activity.text}</div>
-        </div>
-        <div style="font-size:0.75rem; color:var(--muted);">${majorPeriods.map(p => formatHour(p.start)).join(' · ')}</div>
-        <div style="color:var(--muted); font-size:0.8rem;">▼</div>
-      </div>
-      <div style="display:none; padding:0 16px 14px; border-top:1px solid var(--border);">
-        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;">
-          ${data.periods.map(p => {
-            const typeColor = p.type === 'major' ? '#3b9eff' : p.type === 'minor' ? '#00c896' : (p.label.includes('Sunrise') ? '#ffb347' : '#ff7c2a');
-            const typeLabel = p.type === 'major' ? '● MAJOR' : p.type === 'minor' ? '● MINOR' : (p.label.includes('Sunrise') ? '☀️ SUNRISE' : '🌇 SUNSET');
-            const timeStr = p.exact ? formatHour(p.start) : `${formatHour(p.start)} – ${formatHour(p.end)}`;
-            return `<div style="background:var(--surface); border:1px solid ${typeColor}33; border-radius:8px; padding:8px 12px; min-width:140px;">
-              <div style="font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:${typeColor}; margin-bottom:3px;">${typeLabel}</div>
-              <div style="font-size:0.85rem; font-weight:600; color:var(--text);">${p.label}</div>
-              <div style="font-size:0.8rem; color:var(--muted); margin-top:2px;">${timeStr}</div>
-            </div>`;
-          }).join('')}
-        </div>
-      </div>
+function renderDaySelector() {
+  const el = document.getElementById('solunar-day-selector');
+  if (!el) return;
+  const today = new Date();
+  let html = '';
+  for (let i = -1; i <= 5; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() + i);
+    const isSelected = i === solunarDayOffset;
+    const mon = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+    const day = d.getDate();
+    const dow = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+    html += `<div onclick="solunarChangeDay(${i} - solunarDayOffset)" style="text-align:center; padding:4px 10px; cursor:pointer; min-width:52px; ${isSelected ? 'border-bottom:2px solid #fff;' : 'border-bottom:2px solid transparent;'}">
+      <div style="font-size:0.65rem; color:${isSelected ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.45)'}; letter-spacing:0.05em;">${mon}</div>
+      <div style="font-size:${isSelected ? '1.6rem' : '1.1rem'}; font-weight:${isSelected ? '800' : '400'}; color:${isSelected ? '#fff' : 'rgba(255,255,255,0.5)'}; line-height:1.1;">${day}</div>
+      <div style="font-size:0.65rem; color:${isSelected ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.4)'}; letter-spacing:0.05em;">${dow}</div>
     </div>`;
+  }
+  el.innerHTML = html;
+}
+
+function solunarChangeDay(delta) {
+  solunarDayOffset += delta;
+  if (solunarDayOffset < 0) solunarDayOffset = 0;
+  if (solunarDayOffset > 6) solunarDayOffset = 6;
+  doRenderSolunar();
+}
+
+function getActivityLabel(pct) {
+  if (pct >= 80) return 'EXCELLENT';
+  if (pct >= 60) return 'GOOD';
+  if (pct >= 40) return 'FAIR';
+  return 'POOR';
+}
+
+function doRenderSolunar() {
+  if (!solunarLat) return;
+  const today = new Date();
+  const target = new Date(today);
+  target.setDate(target.getDate() + solunarDayOffset);
+  target.setHours(12, 0, 0, 0);
+
+  const data = calcSolunarHourly(target, solunarLat, solunarLng);
+
+  renderDaySelector();
+  drawRatingDial(data.dayRating);
+  drawMoonPhase(data.phaseInfo.phase);
+
+  const pctEl = document.getElementById('solunar-pct');
+  if (pctEl) pctEl.textContent = data.dayRating;
+
+  const labelEl = document.getElementById('solunar-activity-label');
+  if (labelEl) labelEl.textContent = getActivityLabel(data.dayRating);
+
+  drawActivityBars(data.hours, data.major, data.minor);
+
+  // Major times
+  const majorEl = document.getElementById('solunar-major-times');
+  if (majorEl) majorEl.innerHTML = data.major.map(p =>
+    `<div style="font-size:0.9rem; font-weight:600; color:#fff; white-space:nowrap;">${formatHour(p.start)} - ${formatHour(p.end)}</div>`
+  ).join('');
+
+  // Minor times
+  const minorEl = document.getElementById('solunar-minor-times');
+  if (minorEl) minorEl.innerHTML = data.minor.map(p =>
+    `<div style="font-size:0.9rem; font-weight:600; color:#fff; white-space:nowrap;">${formatHour(p.start)} - ${formatHour(p.end)}</div>`
+  ).join('');
+
+  // Sun times
+  const sunEl = document.getElementById('solunar-sun-times');
+  if (sunEl && data.sun) {
+    sunEl.innerHTML = [
+      { icon: '☀', label: 'Rise', t: data.sun.rise },
+      { icon: '🔆', label: 'Noon', t: data.sun.noon },
+      { icon: '☀', label: 'Set', t: data.sun.set },
+    ].map(s => `<div style="display:flex; align-items:center; gap:8px;">
+      <span style="font-size:0.9rem; opacity:0.7;">${s.icon}</span>
+      <span style="font-size:0.85rem; font-weight:600; color:#fff;">${formatHour(s.t)}</span>
+    </div>`).join('');
+  }
+
+  // Moon phase label
+  const moonLabelEl = document.getElementById('solunar-moon-phase-label');
+  if (moonLabelEl) moonLabelEl.textContent = data.phaseInfo.name.toUpperCase();
+
+  // Moon rise/set
+  const moonTimesEl = document.getElementById('solunar-moon-times');
+  if (moonTimesEl) {
+    const items = [
+      { icon: '🌙', t: data.moon.rise },
+      { icon: '🌙', t: data.moon.overhead },
+      { icon: '🌙', t: data.moon.set },
+    ];
+    moonTimesEl.innerHTML = items.map(m => `<div style="display:flex; align-items:center; gap:8px; justify-content:flex-end;">
+      <span style="font-size:0.85rem; font-weight:600; color:#fff;">${m.t !== null ? formatHour(m.t) : '--:--'}</span>
+      <span style="font-size:0.9rem; opacity:0.7;">${m.icon}</span>
+    </div>`).join('');
+  }
+
+  // Live clock update for today
+  if (solunarDialTimer) clearInterval(solunarDialTimer);
+  if (solunarDayOffset === 0) {
+    solunarDialTimer = setInterval(() => {
+      drawActivityBars(data.hours, data.major, data.minor);
+    }, 60000);
+  }
 }
 
 function renderSolunar() {
   if (!solunarLat) {
-    // Show immediately with Twin Falls default while GPS loads
     solunarLat = 42.5630;
     solunarLng = -114.4609;
     document.getElementById('solunar-location-label').textContent = '📍 Getting your location…';
     doRenderSolunar();
-    // Then try to get real GPS in background
     navigator.geolocation.getCurrentPosition(pos => {
       solunarLat = pos.coords.latitude;
       solunarLng = pos.coords.longitude;
-      document.getElementById('solunar-location-label').textContent = `📍 ${solunarLat.toFixed(2)}°, ${solunarLng.toFixed(2)}°`;
+      document.getElementById('solunar-location-label').textContent = `📍 ${solunarLat.toFixed(2)}°N, ${Math.abs(solunarLng).toFixed(2)}°W`;
       doRenderSolunar();
     }, () => {
-      document.getElementById('solunar-location-label').textContent = '📍 Twin Falls, ID (default)';
+      document.getElementById('solunar-location-label').textContent = '📍 Twin Falls, ID';
     });
     return;
   }
   doRenderSolunar();
 }
 
-function doRenderSolunar() {
-  const now = new Date();
-  const currentHour = now.getHours() + now.getMinutes() / 60;
-  const data = calcSolunar(now, solunarLat, solunarLng);
-  const activity = getActivityLabel(data.rating);
-
-  // Date label
-  document.getElementById('solunar-date').textContent = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-
-  // Rating
-  const ratingEl = document.getElementById('solunar-rating');
-  if (ratingEl) {
-    ratingEl.innerHTML = `${getStars(data.rating)}<br><span style="font-size:0.85rem; color:${activity.color};">${activity.text}</span>`;
-  }
-
-  // Today's periods list
-  const periodsEl = document.getElementById('solunar-periods-today');
-  if (periodsEl) {
-    periodsEl.innerHTML = data.periods.map(p => {
-      const active = isInPeriod(currentHour, [p]);
-      const typeColor = p.type === 'major' ? '#3b9eff' : p.type === 'minor' ? '#00c896' : (p.label.includes('Sunrise') ? '#ffb347' : '#ff7c2a');
-      const typeLabel = p.type === 'major' ? 'MAJOR' : p.type === 'minor' ? 'MINOR' : (p.label.includes('Sunrise') ? 'SUNRISE' : 'SUNSET');
-      const timeStr = p.exact ? formatHour(p.start) : `${formatHour(p.start)} – ${formatHour(p.end)}`;
-      return `<div style="background:var(--surface2); border-radius:8px; padding:8px 12px; border-left:3px solid ${typeColor}; ${active ? 'box-shadow:0 0 8px rgba(59,158,255,0.3);' : ''}">
-        <div style="font-size:0.75rem; font-weight:700; color:${typeColor};">${typeLabel}</div>
-        <div style="font-size:0.8rem; color:var(--text); margin-top:1px;">${p.label} · ${timeStr}</div>
-      </div>`;
-    }).join('');
-  }
-
-  // Draw dial
-  drawSolunarDial(data.periods, currentHour);
-
-  // Update time display
-  const timeEl = document.getElementById('solunar-time-display');
-  if (timeEl) {
-    const h = now.getHours() % 12 || 12;
-    const m = String(now.getMinutes()).padStart(2,'0');
-    const s = String(now.getSeconds()).padStart(2,'0');
-    const ap = now.getHours() >= 12 ? 'PM' : 'AM';
-    timeEl.textContent = String(h).padStart(2,'0') + ':' + m + ':' + s + ' ' + ap;
-  }
-
-  // Next peak
-  const next = getNextPeak(currentHour, data.periods.filter(p => p.type !== 'bonus'));
-  const nextEl = document.getElementById('solunar-next-peak');
-  const countEl = document.getElementById('solunar-next-countdown');
-  if (nextEl && next) {
-    nextEl.textContent = `${next.label} at ${formatHour(next.start)}`;
-    if (countEl) countEl.textContent = hoursUntil(next.start, currentHour);
-  }
-
-  // 7 day forecast
-  const forecastEl = document.getElementById('solunar-7day');
-  if (forecastEl) {
-    let html = '';
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(now);
-      d.setDate(d.getDate() + i);
-      d.setHours(0, 0, 0, 0);
-      html += renderSolunarDay(d, solunarLat, solunarLng, i === 0);
-    }
-    forecastEl.innerHTML = html;
-  }
-
-  // Start live clock
-  if (solunarDialTimer) clearInterval(solunarDialTimer);
-  solunarDialTimer = setInterval(updateSolunarDial, 1000);
-}
-
 function refreshSolunar() {
-  document.getElementById('solunar-location-label').textContent = 'Getting your location…';
-  navigator.geolocation.getCurrentPosition(pos => {
-    solunarLat = pos.coords.latitude;
-    solunarLng = pos.coords.longitude;
-    const lat = solunarLat.toFixed(2);
-    const lng = solunarLng.toFixed(2);
-    document.getElementById('solunar-location-label').textContent = `📍 ${lat}°, ${lng}°`;
-    doRenderSolunar();
-  }, () => {
-    // Fallback to Twin Falls, ID if GPS denied
-    solunarLat = 42.5630;
-    solunarLng = -114.4609;
-    document.getElementById('solunar-location-label').textContent = '📍 Twin Falls, ID (default)';
-    doRenderSolunar();
-  });
+  solunarLat = null;
+  renderSolunar();
 }
 
 // ── TOAST ─────────────────────────────────────────────────────────────────────
