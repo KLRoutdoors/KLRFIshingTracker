@@ -2348,6 +2348,7 @@ async function loadGroupFeed() {
     const memberIdx = currentGroupMembers.findIndex(m => m.user_id === row.user_id);
     const color = MEMBER_COLORS[memberIdx >= 0 ? memberIdx % MEMBER_COLORS.length : 0];
     const member = currentGroupMembers[memberIdx];
+    groupCatchCache[row.id] = c;
     const isMe = row.user_id === currentUser.id;
     const hidden = c._hidden || [];
     const show = (key) => !hidden.includes(key);
@@ -2381,7 +2382,12 @@ async function loadGroupFeed() {
         </div>
         ${(show('spot') && c.spot) ? `<div style="font-size:0.82rem; color:var(--muted); margin-bottom:6px;">📌 ${c.spot}</div>` : ''}
         ${(show('notes') && c.notes) ? `<div style="font-size:0.82rem; color:var(--muted); font-style:italic; margin-bottom:8px;">${c.notes}</div>` : ''}
-        ${!isMe ? `<button class="btn btn-primary btn-sm" style="width:100%; margin-top:4px;" onclick="saveGroupCatch(${JSON.stringify(c).replace(/\/g,'\\').replace(/'/g,'&#39;').replace(/`/g,'&#96;')})">💾 Save to My Catches</button>` : '<div style="font-size:0.75rem; color:var(--muted); text-align:center; margin-top:4px;">Your catch</div>'}
+        <div style="display:flex; gap:8px; margin-top:6px;">
+          ${!isMe
+            ? `<button class="btn btn-primary btn-sm" style="flex:1;" onclick="saveGroupCatchById('${row.id}')">💾 Save to My Catches</button>`
+            : `<button class="btn btn-sm" style="flex:1; background:var(--surface2); border:1px solid var(--border); color:var(--text);" onclick="openGroupEditModalById('${row.id}')">✏️ Edit Visibility</button>`
+          }
+        </div>
       </div>
     </div>`;
   }).join('');
@@ -2390,6 +2396,17 @@ async function loadGroupFeed() {
 let editingGroupCatchId = null;
 let currentGroupEditRowId = null;
 let currentGroupEditData = null;
+let groupCatchCache = {};
+
+function saveGroupCatchById(rowId) {
+  const c = groupCatchCache[rowId];
+  if (c) saveGroupCatch(c);
+}
+
+function openGroupEditModalById(rowId) {
+  const c = groupCatchCache[rowId];
+  if (c) openGroupEditModal(rowId, c);
+}
 
 function openGroupEditModal(rowId, c) {
   currentGroupEditRowId = rowId;
