@@ -1885,7 +1885,7 @@ function renderCatches() {
     const dateStr = date.toLocaleDateString('en-AU', { day:'numeric', month:'short', year:'numeric' });
     const timeStr = date.toLocaleTimeString('en-AU', { hour:'2-digit', minute:'2-digit' });
     return `
-    <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; position:relative;">
+    <div id="catch-card-${c._id}" style="background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; position:relative;">
       <button onclick="deleteCatch('${c._id}')" style="position:absolute; top:8px; right:8px; background:rgba(15,25,35,0.7); border:none; color:var(--muted); font-size:0.8rem; cursor:pointer; width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; z-index:2;" title="Delete">🗑</button>
       <div style="display:grid; grid-template-columns:auto 1fr; gap:14px; padding:16px; align-items:start;">
         <div class="catch-photo">
@@ -3288,6 +3288,21 @@ function openLocationMap(lat, lng, label) {
 function closeLocationLightbox() {
   document.getElementById('location-lightbox').style.display = 'none';
   if (locationLightboxMap) { locationLightboxMap.remove(); locationLightboxMap = null; }
+}
+
+function viewCatchInList(catchId) {
+  // Switch to My Catches tab
+  showPage('catches', { currentTarget: document.querySelectorAll('.nav-tab')[1] });
+  // After render, scroll to and highlight the catch
+  setTimeout(() => {
+    const el = document.getElementById('catch-card-' + catchId);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.style.transition = 'box-shadow 0.3s';
+      el.style.boxShadow = '0 0 0 3px var(--accent)';
+      setTimeout(() => { el.style.boxShadow = ''; }, 2500);
+    }
+  }, 300);
 }
 
 function openPhoto(src) {
@@ -4723,32 +4738,45 @@ async function renderMyStats() {
   });
 
   if (recordsEl) {
+    // Show one card per species with best photo, PB weight and length
     const rows = allSpecies.map(sp => {
       const w = pbWeight[sp];
       const l = pbLength[sp];
       const count = catches.filter(c => c.species === sp).length;
-      return `<div style="display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--border);">
-        <div style="flex:1;">
-          <div style="font-weight:700; font-size:0.95rem; color:var(--text); margin-bottom:4px;">${sp}</div>
-          <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            ${w ? `<span class="chip green">⚖️ PB: ${w.weight} lbs</span>` : ''}
-            ${l ? `<span class="chip highlight">📏 PB: ${l.length} in</span>` : ''}
+      // Best photo: prefer heaviest catch photo, then longest, then any
+      const bestPhoto = (w?.photo) || (l?.photo) || catches.find(c => c.species === sp && c.photo)?.photo;
+      const pbDate = w?.datetime || l?.datetime;
+      const dateStr = pbDate ? new Date(pbDate).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}) : '';
+
+      return `<div style="display:flex; gap:12px; padding:14px 0; border-bottom:1px solid var(--border); align-items:center;">
+        <div style="width:72px; height:72px; border-radius:10px; overflow:hidden; background:var(--surface2); flex-shrink:0; display:flex; align-items:center; justify-content:center;">
+          ${bestPhoto
+            ? `<img src="${bestPhoto}" onclick="openPhoto('${bestPhoto}')" style="width:100%; height:100%; object-fit:cover; cursor:zoom-in;">`
+            : `<span style="font-size:2rem;">🐟</span>`}
+        </div>
+        <div style="flex:1; min-width:0;">
+          <div style="font-weight:800; font-size:1rem; color:var(--text); margin-bottom:6px;">${sp}</div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:4px;">
+            ${w ? `<span class="chip green">⚖️ ${w.weight} lbs</span>` : ''}
+            ${l ? `<span class="chip highlight">📏 ${l.length} in</span>` : ''}
             <span class="chip">🎣 ${count} caught</span>
           </div>
+          ${dateStr ? `<div style="font-size:0.75rem; color:var(--muted);">PB caught ${dateStr}</div>` : ''}
+          ${(w || l) ? `<button onclick="viewCatchInList('${(w||l)._id}')" style="margin-top:6px; background:none; border:1px solid var(--accent); color:var(--accent); border-radius:6px; padding:3px 10px; font-size:0.75rem; cursor:pointer; font-weight:600;">View Catch →</button>` : ''}
         </div>
       </div>`;
     });
-    recordsEl.innerHTML = rows.join('') || '<div style="color:var(--muted);">No data yet</div>';
+    recordsEl.innerHTML = rows.length ? rows.join('') : '<div style="color:var(--muted); padding:12px 0;">No catches logged yet.</div>';
   }
 
-  // Species chips
+  // Species chips - simple count tags
   const PALETTE = ['#3b9eff','#00c896','#ffb347','#ff5c5c','#c97fff','#5ce8ff','#ffda6a','#a8ff3e'];
   if (speciesEl) {
-    speciesEl.innerHTML = allSpecies.map((sp, i) => {
+    speciesEl.innerHTML = allSpecies.length ? allSpecies.map((sp, i) => {
       const color = PALETTE[i % PALETTE.length];
       const count = catches.filter(c => c.species === sp).length;
       return `<div style="background:${color}18; border:1px solid ${color}44; border-radius:20px; padding:6px 14px; font-size:0.85rem; font-weight:600; color:${color};">${sp} <span style="opacity:0.7;">${count}</span></div>`;
-    }).join('');
+    }).join('') : '<div style="color:var(--muted); font-size:0.9rem;">No species logged yet.</div>';
   }
 }
 
