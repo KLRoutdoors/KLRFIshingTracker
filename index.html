@@ -936,38 +936,38 @@
 
     <!-- Activity bar chart -->
     <div style="padding:0 16px 8px;">
-      <canvas id="solunar-bars" height="110" style="width:100%;"></canvas>
+      <canvas id="solunar-bars" height="140" style="width:100%; display:block;"></canvas>
       <div style="display:flex; justify-content:space-between; padding:4px 2px 0; font-size:0.7rem; color:rgba(255,255,255,0.5);">
         <span>12</span><span>3am</span><span>6am</span><span>9am</span><span>12</span><span>3pm</span><span>6pm</span><span>9pm</span><span>12</span>
       </div>
     </div>
 
     <!-- Major / Minor times -->
-    <div style="display:grid; grid-template-columns:1fr 1fr; margin:8px 12px; border:1px solid rgba(255,255,255,0.15); border-radius:12px; overflow:hidden;">
-      <div style="padding:14px 12px; border-right:1px solid rgba(255,255,255,0.15);">
+    <div style="display:grid; grid-template-columns:1fr 1fr; margin:8px 12px; border-radius:12px; overflow:hidden; gap:8px;">
+      <div style="padding:14px 12px; background:rgba(59,158,255,0.18); border:1px solid rgba(59,158,255,0.4); border-radius:12px;">
         <div id="solunar-major-times" style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;"></div>
-        <div style="font-size:0.65rem; letter-spacing:0.12em; color:rgba(255,255,255,0.5);">MAJOR TIME</div>
+        <div style="font-size:0.65rem; letter-spacing:0.12em; color:#3b9eff; font-weight:700;">MAJOR TIME</div>
       </div>
-      <div style="padding:14px 12px;">
+      <div style="padding:14px 12px; background:rgba(0,200,150,0.18); border:1px solid rgba(0,200,150,0.4); border-radius:12px;">
         <div id="solunar-minor-times" style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;"></div>
-        <div style="font-size:0.65rem; letter-spacing:0.12em; color:rgba(255,255,255,0.5);">MINOR TIME</div>
+        <div style="font-size:0.65rem; letter-spacing:0.12em; color:#00c896; font-weight:700;">MINOR TIME</div>
       </div>
     </div>
 
     <!-- Sun / Moon row -->
     <div style="display:grid; grid-template-columns:1fr auto 1fr; margin:8px 12px 20px; border:1px solid rgba(255,255,255,0.15); border-radius:12px; overflow:hidden; align-items:center;">
-      <!-- Sun times -->
+      <!-- Sunrise / Sunset -->
       <div style="padding:14px 12px;">
-        <div id="solunar-sun-times" style="display:flex; flex-direction:column; gap:6px;"></div>
+        <div id="solunar-sun-times" style="display:flex; flex-direction:column; gap:10px;"></div>
       </div>
       <!-- Moon phase -->
-      <div style="padding:14px; text-align:center; border-left:1px solid rgba(255,255,255,0.15); border-right:1px solid rgba(255,255,255,0.15);">
-        <canvas id="solunar-moon-icon" width="54" height="54"></canvas>
-        <div id="solunar-moon-phase-label" style="font-size:0.65rem; letter-spacing:0.08em; color:rgba(255,255,255,0.6); margin-top:4px; text-transform:uppercase;"></div>
+      <div style="padding:14px 10px; text-align:center; border-left:1px solid rgba(255,255,255,0.15); border-right:1px solid rgba(255,255,255,0.15);">
+        <canvas id="solunar-moon-icon" width="64" height="64"></canvas>
+        <div id="solunar-moon-phase-label" style="font-size:0.6rem; letter-spacing:0.08em; color:rgba(255,255,255,0.7); margin-top:6px; text-transform:uppercase; line-height:1.3;"></div>
       </div>
       <!-- Moon rise/set -->
       <div style="padding:14px 12px;">
-        <div id="solunar-moon-times" style="display:flex; flex-direction:column; gap:6px;"></div>
+        <div id="solunar-moon-times" style="display:flex; flex-direction:column; gap:10px;"></div>
       </div>
     </div>
 
@@ -1133,7 +1133,7 @@
   <div style="background:var(--surface); border:1px solid var(--border); border-radius:16px 16px 0 0; width:100%; max-width:480px; max-height:90vh; overflow-y:auto;">
     <div style="padding:16px 20px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border);">
       <div style="font-weight:700; font-size:1rem;">🎣 Share Catch</div>
-      <button onclick="document.getElementById('share-modal').style.display='none'" style="background:transparent; border:none; color:var(--muted); font-size:1.4rem; cursor:pointer;">✕</button>
+      <button onclick="document.getElementById('share-modal').style.display='none'; const f=document.getElementById('fab'); if(f) f.style.display='flex';" style="background:transparent; border:none; color:var(--muted); font-size:1.4rem; cursor:pointer;">✕</button>
     </div>
     <div style="padding:20px; display:flex; flex-direction:column; gap:10px;">
       <div id="share-photo-wrap" style="display:none;">
@@ -2121,6 +2121,7 @@ function shareCatch(id) {
   `.trim();
 
   document.getElementById('share-modal').style.display = 'flex';
+  const fab = document.getElementById('fab'); if (fab) fab.style.display = 'none';
 }
 
 async function doShare() {
@@ -2139,6 +2140,7 @@ function copyShareText() {
   navigator.clipboard.writeText(shareText).then(() => {
     showToast('📋 Copied to clipboard!');
     document.getElementById('share-modal').style.display = 'none';
+    const fab = document.getElementById('fab'); if (fab) fab.style.display = 'flex';
   }).catch(() => showToast('Could not copy', true));
 }
 
@@ -2476,6 +2478,7 @@ async function shareToGroup(groupId) {
     });
     document.getElementById('share-group-modal').style.display = 'none';
     document.getElementById('share-modal').style.display = 'none';
+    const fab = document.getElementById('fab'); if (fab) fab.style.display = 'flex';
     const group = myGroups.find(g => g.id === groupId);
     showToast(`👥 Shared to ${group?.name}!`);
   } catch (e) {
@@ -2880,37 +2883,40 @@ function drawMoonPhase(phase) {
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
-  const cx = W/2, cy = H/2, r = W/2 - 4;
+  const cx = W/2, cy = H/2, r = W/2 - 3;
   ctx.clearRect(0, 0, W, H);
 
-  const p = phase; // 0=new, 0.5=full
+  const p = phase;
+  // Dark background circle
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-  ctx.lineWidth = 1;
+  ctx.fillStyle = '#071f2e';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+  ctx.lineWidth = 1.5;
   ctx.stroke();
 
-  // Draw illuminated portion
   ctx.save();
   ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.arc(cx, cy, r - 1, 0, Math.PI * 2);
   ctx.clip();
 
+  // Draw illuminated (white/silver) and dark side
   if (p < 0.5) {
-    // Waxing
-    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    // Waxing — right side lit
+    ctx.fillStyle = '#1a1a2e'; // dark side
     ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = 'rgba(100,200,255,0.7)';
+    ctx.fillStyle = '#e8e8ff'; // bright lit side
     ctx.beginPath();
     ctx.arc(cx, cy, r, Math.PI/2, -Math.PI/2, true);
     const kx = r * Math.cos(Math.PI * (1 - p * 2));
     ctx.bezierCurveTo(cx + kx, cy - r, cx + kx, cy + r, cx, cy + r);
     ctx.fill();
   } else {
-    // Waning
-    ctx.fillStyle = 'rgba(100,200,255,0.7)';
+    // Waning — left side lit
+    ctx.fillStyle = '#e8e8ff'; // bright lit side
     ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.fillStyle = '#1a1a2e'; // dark side
     ctx.beginPath();
     ctx.arc(cx, cy, r, Math.PI/2, -Math.PI/2);
     const kx = r * Math.cos(Math.PI * ((p - 0.5) * 2));
@@ -2920,24 +2926,27 @@ function drawMoonPhase(phase) {
   ctx.restore();
 }
 
-function drawActivityBars(hours, major, minor) {
+let barCurrentHeights = null;
+let barAnimFrame = null;
+
+function drawBarsFrame(heights, major, minor) {
   const canvas = document.getElementById('solunar-bars');
   if (!canvas) return;
-  canvas.width = canvas.offsetWidth * window.devicePixelRatio || canvas.offsetWidth;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = canvas.offsetWidth * dpr;
   const ctx = canvas.getContext('2d');
-  const W = canvas.width, H = canvas.height * (window.devicePixelRatio || 1);
+  const W = canvas.width;
+  const H = canvas.height * dpr;
   ctx.clearRect(0, 0, W, H);
 
   const barW = W / 24;
   const maxH = H - 4;
 
-  hours.forEach((val, i) => {
+  heights.forEach((val, i) => {
     const bH = (val / 100) * maxH;
     const x = i * barW;
     const y = H - bH;
-
-    // Check if in major/minor period
-    let color = 'rgba(77,185,255,0.4)';
+    let color = 'rgba(77,185,255,0.35)';
     major.forEach(p => {
       let s = p.start, e = p.end;
       if (e < s) { if (i >= s || i < e) color = 'rgba(77,185,255,0.9)'; }
@@ -2948,14 +2957,12 @@ function drawActivityBars(hours, major, minor) {
       if (e < s) { if (i >= s || i < e) color = 'rgba(77,220,180,0.85)'; }
       else if (i >= s && i < e) color = 'rgba(77,220,180,0.85)';
     });
-
     ctx.fillStyle = color;
     ctx.beginPath();
-    ctx.roundRect(x + 1, y, barW - 2, bH, 2);
+    ctx.roundRect(x + 1, y, barW - 2, Math.max(2, bH), 2);
     ctx.fill();
   });
 
-  // Current time line (only for today)
   if (solunarDayOffset === 0) {
     const now = new Date();
     const nowH = now.getHours() + now.getMinutes() / 60;
@@ -2963,10 +2970,35 @@ function drawActivityBars(hours, major, minor) {
     ctx.beginPath();
     ctx.moveTo(x, 0);
     ctx.lineTo(x, H);
-    ctx.strokeStyle = 'rgba(255,100,100,0.8)';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(255,100,100,0.85)';
+    ctx.lineWidth = 2 * dpr;
     ctx.stroke();
   }
+}
+
+function animateBars(targetHeights, major, minor) {
+  if (barAnimFrame) cancelAnimationFrame(barAnimFrame);
+  const from = barCurrentHeights ? [...barCurrentHeights] : new Array(24).fill(0);
+  const start = performance.now();
+  const duration = 400;
+
+  function step(now) {
+    const t = Math.min(1, (now - start) / duration);
+    // Ease out cubic
+    const ease = 1 - Math.pow(1 - t, 3);
+    const heights = from.map((f, i) => f + (targetHeights[i] - f) * ease);
+    drawBarsFrame(heights, major, minor);
+    if (t < 1) {
+      barAnimFrame = requestAnimationFrame(step);
+    } else {
+      barCurrentHeights = [...targetHeights];
+    }
+  }
+  barAnimFrame = requestAnimationFrame(step);
+}
+
+function drawActivityBars(hours, major, minor) {
+  animateBars(hours, major, minor);
 }
 
 function renderDaySelector() {
@@ -2974,27 +3006,48 @@ function renderDaySelector() {
   if (!el) return;
   const today = new Date();
   let html = '';
-  for (let i = -1; i <= 5; i++) {
+  // Show 5 days: 2 before and 2 after selected
+  for (let i = solunarDayOffset - 2; i <= solunarDayOffset + 2; i++) {
     const d = new Date(today);
     d.setDate(d.getDate() + i);
     const isSelected = i === solunarDayOffset;
     const mon = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
     const day = d.getDate();
     const dow = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
-    html += `<div onclick="solunarChangeDay(${i} - solunarDayOffset)" style="text-align:center; padding:4px 10px; cursor:pointer; min-width:52px; ${isSelected ? 'border-bottom:2px solid #fff;' : 'border-bottom:2px solid transparent;'}">
-      <div style="font-size:0.65rem; color:${isSelected ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.45)'}; letter-spacing:0.05em;">${mon}</div>
-      <div style="font-size:${isSelected ? '1.6rem' : '1.1rem'}; font-weight:${isSelected ? '800' : '400'}; color:${isSelected ? '#fff' : 'rgba(255,255,255,0.5)'}; line-height:1.1;">${day}</div>
-      <div style="font-size:0.65rem; color:${isSelected ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.4)'}; letter-spacing:0.05em;">${dow}</div>
+    html += `<div onclick="solunarJumpToDay(${i})" style="text-align:center; padding:4px 12px; cursor:pointer; min-width:58px; transition:all 0.25s ease; ${isSelected ? 'border-bottom:3px solid #fff;' : 'border-bottom:3px solid transparent;'}">
+      <div style="font-size:0.75rem; color:${isSelected ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.4)'}; letter-spacing:0.05em; transition:color 0.25s;">${mon}</div>
+      <div style="font-size:${isSelected ? '2rem' : '1.25rem'}; font-weight:${isSelected ? '800' : '400'}; color:${isSelected ? '#fff' : 'rgba(255,255,255,0.4)'}; line-height:1.15; transition:all 0.25s;">${day}</div>
+      <div style="font-size:0.75rem; color:${isSelected ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.35)'}; letter-spacing:0.05em; transition:color 0.25s;">${dow}</div>
     </div>`;
   }
   el.innerHTML = html;
 }
 
+function solunarJumpToDay(i) {
+  if (i === solunarDayOffset) return;
+  solunarDayOffset = Math.max(-10, Math.min(10, i));
+  animateSolunarChange();
+}
+
 function solunarChangeDay(delta) {
-  solunarDayOffset += delta;
-  if (solunarDayOffset < 0) solunarDayOffset = 0;
-  if (solunarDayOffset > 6) solunarDayOffset = 6;
-  doRenderSolunar();
+  const newOffset = solunarDayOffset + delta;
+  if (newOffset < -10 || newOffset > 10) return;
+  solunarDayOffset = newOffset;
+  animateSolunarChange();
+}
+
+function animateSolunarChange() {
+  const dialCanvas = document.getElementById('solunar-dial');
+  const pctEl = document.getElementById('solunar-pct');
+  const labelEl = document.getElementById('solunar-activity-label');
+  // Fade dial and text but keep bars visible for smooth transition
+  [dialCanvas].forEach(el => { if (el) { el.style.transition = 'opacity 0.2s'; el.style.opacity = '0.3'; } });
+  if (pctEl) { pctEl.style.transition = 'opacity 0.2s'; pctEl.style.opacity = '0.3'; }
+  setTimeout(() => {
+    doRenderSolunar();
+    [dialCanvas].forEach(el => { if (el) { el.style.transition = 'opacity 0.2s'; el.style.opacity = '1'; } });
+    if (pctEl) { pctEl.style.transition = 'opacity 0.2s'; pctEl.style.opacity = '1'; }
+  }, 150);
 }
 
 function getActivityLabel(pct) {
@@ -3028,25 +3081,26 @@ function doRenderSolunar() {
   // Major times
   const majorEl = document.getElementById('solunar-major-times');
   if (majorEl) majorEl.innerHTML = data.major.map(p =>
-    `<div style="font-size:0.9rem; font-weight:600; color:#fff; white-space:nowrap;">${formatHour(p.start)} - ${formatHour(p.end)}</div>`
+    `<div style="font-size:0.95rem; font-weight:700; color:#7ec8ff; white-space:nowrap; letter-spacing:0.02em;">${formatHour(p.start)} - ${formatHour(p.end)}</div>`
   ).join('');
 
-  // Minor times
   const minorEl = document.getElementById('solunar-minor-times');
   if (minorEl) minorEl.innerHTML = data.minor.map(p =>
-    `<div style="font-size:0.9rem; font-weight:600; color:#fff; white-space:nowrap;">${formatHour(p.start)} - ${formatHour(p.end)}</div>`
+    `<div style="font-size:0.95rem; font-weight:700; color:#00e6aa; white-space:nowrap; letter-spacing:0.02em;">${formatHour(p.start)} - ${formatHour(p.end)}</div>`
   ).join('');
 
   // Sun times
   const sunEl = document.getElementById('solunar-sun-times');
   if (sunEl && data.sun) {
     sunEl.innerHTML = [
-      { icon: '☀', label: 'Rise', t: data.sun.rise },
-      { icon: '🔆', label: 'Noon', t: data.sun.noon },
-      { icon: '☀', label: 'Set', t: data.sun.set },
+      { icon: '🌅', label: 'Sunrise', t: data.sun.rise },
+      { icon: '🌇', label: 'Sunset', t: data.sun.set },
     ].map(s => `<div style="display:flex; align-items:center; gap:8px;">
-      <span style="font-size:0.9rem; opacity:0.7;">${s.icon}</span>
-      <span style="font-size:0.85rem; font-weight:600; color:#fff;">${formatHour(s.t)}</span>
+      <span style="font-size:1rem;">${s.icon}</span>
+      <div>
+        <div style="font-size:0.65rem; color:rgba(255,255,255,0.5); letter-spacing:0.06em;">${s.label.toUpperCase()}</div>
+        <div style="font-size:0.9rem; font-weight:700; color:#ffb347;">${formatHour(s.t)}</div>
+      </div>
     </div>`).join('');
   }
 
@@ -3058,13 +3112,12 @@ function doRenderSolunar() {
   const moonTimesEl = document.getElementById('solunar-moon-times');
   if (moonTimesEl) {
     const items = [
-      { icon: '🌙', t: data.moon.rise },
-      { icon: '🌙', t: data.moon.overhead },
-      { icon: '🌙', t: data.moon.set },
+      { label: 'Moonrise', t: data.moon.rise },
+      { label: 'Moonset', t: data.moon.set },
     ];
-    moonTimesEl.innerHTML = items.map(m => `<div style="display:flex; align-items:center; gap:8px; justify-content:flex-end;">
-      <span style="font-size:0.85rem; font-weight:600; color:#fff;">${m.t !== null ? formatHour(m.t) : '--:--'}</span>
-      <span style="font-size:0.9rem; opacity:0.7;">${m.icon}</span>
+    moonTimesEl.innerHTML = items.map(m => `<div style="text-align:right;">
+      <div style="font-size:0.65rem; color:rgba(255,255,255,0.5); letter-spacing:0.06em;">${m.label.toUpperCase()}</div>
+      <div style="font-size:0.9rem; font-weight:700; color:#a0d8ff;">${m.t !== null ? formatHour(m.t) : '--:--'}</div>
     </div>`).join('');
   }
 
