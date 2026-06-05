@@ -3738,12 +3738,11 @@ function getSunTimes(date, lat, lng) {
   if (Math.abs(cosH) > 1) return null;
   const H = toDeg(Math.acos(cosH)) / 15;
   const noon = (RA - lng / 15 + 12) % 24;
-  // Use device timezone offset (handles DST correctly for user's actual location)
-  const tzOffset = -new Date().getTimezoneOffset() / 60;
-  // But if user selected a different location, adjust by lng difference from device
-  const lngOffset = lng / 15;
-  const deviceOffset = tzOffset;
+  const tzOffset = (typeof solunarTzOffset !== 'undefined' && solunarTzOffset !== null)
+    ? solunarTzOffset
+    : -new Date().getTimezoneOffset() / 60;
   const toLocal = h => ((h + tzOffset) % 24 + 24) % 24;
+  console.log('getSunTimes tzOffset:', tzOffset, 'rise:', toLocal((noon - H + 24) % 24).toFixed(2), 'set:', toLocal((noon + H) % 24).toFixed(2));
   return { rise: toLocal((noon - H + 24) % 24), set: toLocal((noon + H) % 24), noon: toLocal(noon % 24) };
 }
 
