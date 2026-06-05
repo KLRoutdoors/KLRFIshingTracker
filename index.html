@@ -1883,8 +1883,8 @@ function renderCatches() {
 
   grid.innerHTML = filtered.map(c => {
     const date = new Date(c.datetime);
-    const dateStr = date.toLocaleDateString('en-AU', { day:'numeric', month:'short', year:'numeric' });
-    const timeStr = date.toLocaleTimeString('en-AU', { hour:'2-digit', minute:'2-digit' });
+    const dateStr = date.toLocaleDateString('en-US', { day:'numeric', month:'short', year:'numeric' });
+    const timeStr = date.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
     return `
     <div id="catch-card-${c._id}" style="background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; position:relative;">
       <button onclick="deleteCatch('${c._id}')" style="position:absolute; top:8px; right:8px; background:rgba(15,25,35,0.7); border:none; color:var(--muted); font-size:0.8rem; cursor:pointer; width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; z-index:2;" title="Delete">🗑</button>
@@ -2193,8 +2193,8 @@ function renderMap() {
   const bounds = [];
   withGPS.forEach(c => {
     const date = new Date(c.datetime);
-    const dateStr = date.toLocaleDateString('en-AU', { day:'numeric', month:'short', year:'numeric' });
-    const timeStr = date.toLocaleTimeString('en-AU', { hour:'2-digit', minute:'2-digit' });
+    const dateStr = date.toLocaleDateString('en-US', { day:'numeric', month:'short', year:'numeric' });
+    const timeStr = date.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
     const popup = `
       <div class="map-popup">
         <h4>${c.species}</h4>
@@ -4269,22 +4269,28 @@ function doRenderSolunar() {
   }
 }
 
-function renderSolunar() {
+async function renderSolunar() {
   if (!solunarLat) {
     solunarLat = 42.5630;
     solunarLng = -114.4609;
+    solunarTzOffset = -6; // Mountain Time default while GPS loads
     document.getElementById('solunar-location-label').textContent = '📍 Getting your location…';
     doRenderSolunar();
-    navigator.geolocation.getCurrentPosition(pos => {
+    navigator.geolocation.getCurrentPosition(async pos => {
       solunarLat = pos.coords.latitude;
       solunarLng = pos.coords.longitude;
-      document.getElementById('solunar-location-label').textContent = `📍 ${solunarLat.toFixed(2)}°N, ${Math.abs(solunarLng).toFixed(2)}°W`;
+      await fetchTimezoneOffset(solunarLat, solunarLng);
+      await reverseGeocode(solunarLat, solunarLng);
       doRenderSolunar();
-    }, () => {
-      document.getElementById('solunar-location-label').textContent = '📍 Twin Falls, ID';
+    }, async () => {
+      // GPS failed — still fetch timezone for Twin Falls default
+      await fetchTimezoneOffset(solunarLat, solunarLng);
+      document.getElementById('solunar-location-label').innerHTML = '📍 Twin Falls, ID <span style="font-size:0.75rem; opacity:0.7;">✏️</span>';
+      doRenderSolunar();
     });
     return;
   }
+  if (!solunarTzOffset) await fetchTimezoneOffset(solunarLat, solunarLng);
   doRenderSolunar();
 }
 
