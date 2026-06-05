@@ -3991,10 +3991,9 @@ function calcSolunarHourly(date, lat, lng) {
   if (isFullOrNew && isPerigee && daylightScore > 40) rating = Math.min(96, rating + 6);
   else if (isFullOrNew && daylightScore > 35) rating = Math.min(92, rating + 3);
 
-  // Stretch scores to use full 0-100 range more dramatically
-  // Raw 25 → stretched ~35, raw 60 → stretched ~73, raw 85 → stretched ~91
-  const stretched = Math.round(Math.pow(rating / 100, 0.72) * 100);
-  rating = Math.min(97, Math.max(4, stretched));
+  // Aggressive stretch: raw 10→32, raw 30→55, raw 50→71, raw 70→84, raw 90→95
+  const stretched = Math.round(Math.pow(rating / 100, 0.50) * 100);
+  rating = Math.min(97, Math.max(8, stretched));
 
   return { hours, major, minor, sun, moon, phaseInfo, dayRating: rating };
 }
